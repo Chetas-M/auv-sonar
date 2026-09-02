@@ -7,16 +7,20 @@ This simulator models the pre-silicon signal synthesis, adaptive channel decisio
 ---
 
 > [!IMPORTANT]
-> **Honest Engineering Scope & Limitation Statement**:
-> This simulator validates waveform generation, environmental scenario mapping, channel quality estimation, hysteresis-backed profile adaptation, 12-bit DAC quantization, DMA buffer sizing, and estimated duty-cycle power dissipation.
+> **Core Project Narrative & Engineering Scope Statement**:
+> We built and validated a digital twin of an adaptive sonar transmitter waveform pipeline. The simulation evaluates frequency-dependent propagation using established absorption equations and compares three predefined LFM profiles under explicit environmental and mission assumptions. A two-tier policy first rejects profiles that fail a defined relative propagation criterion and then selects among viable profiles based on the simulated mission objective: resolution, directivity, or long-range robustness.
+>
+> This simulator models the **transmitter payload pipeline**:
+> Waveform synthesis $\to$ 12-bit DAC quantization $\to$ DMA memory mapping $\to$ frequency-dependent attenuation $\to$ propagation viability filtering $\to$ mission objective profile selection $\to$ directional hysteresis & debounce $\to$ atomic ping-boundary latching $\to$ duty-cycle power dissipation.
 >
 > It **DOES NOT** claim to validate:
-> - Real underwater acoustic performance
-> - Actual piezoelectric transducer impedance or resonance
-> - Acoustic propagation measurements in physical water
+> - Real underwater acoustic performance or measured echoes
+> - Physical two-way echo reflection, target scattering strength, or receiver hydrophone gain
+> - Actual piezoelectric transducer impedance or ceramic resonance
+> - Acoustic propagation measurements in physical ocean water
 > - Power amplifier (PA) thermal stability or analog settling
 > - Actual hardware current consumption
-> - Receiver hardware or hydrophone acoustic feedback
+> - Receiver hardware or closed-loop hydrophone acoustic feedback
 > - Experimentally calibrated turbidity-to-frequency mapping
 >
 > The physical hardware demonstration is **transmitter-side only**.
@@ -51,10 +55,11 @@ Simulation correctness level: algorithmically credible, physically unverified.
 1. **Algorithmic Correctness**: Validates exact phase-integrated Linear Frequency Modulation (LFM) synthesis across all 3 canonical operational bands (`LOW_FREQUENCY`: 100–220 kHz, `BALANCED`: 200–400 kHz, `HIGH_FREQUENCY`: 350–500 kHz).
 2. **Spectral Discontinuity Mitigation**: Confirms that applying a Hann window reduces start/end edge discontinuities and attenuates out-of-band spectral sidelobes in discrete simulation; physical analog harmonic rejection must be validated on bench scope/FFT.
 3. **DAC Quantization Modeling**: Proves that a 12-bit unsigned DAC running at $4.0\text{ MSPS}$ yields $\sim 69.7\text{ dB}$ simulated SQNR, maintaining quantization error strictly within $\pm 0.5\text{ LSB}$ ($\pm 0.403\text{ mV}$ at $3.3\text{V}$ reference).
-4. **Memory Feasibility on STM32G4**: Verifies that a $2.0\text{ ms}$ pulse at $4\text{ MSPS}$ requires exactly **8,000 samples** ($16.0\text{ KB}$ as `uint16_t`). Storing 3 canonical profiles in Flash requires only $48\text{ KB}$ ($<9.4\%$ of the $512\text{ KB}$ Flash on STM32G474), and streaming a pulse occupies only $12.5\%$ of the $128\text{ KB}$ SRAM.
-5. **Jitter-Free Adaptation**: Proves that directional Schmitt-trigger hysteresis and debounce persistence filters eliminate state flickering caused by potentiometer wiper noise or ADC thermal fluctuation.
-6. **Atomic Profile Latching**: Demonstrates that transmitter profile switches occur strictly at ping repetition boundaries (modeling DMA Transfer Complete ISRs), preventing mid-pulse phase jumps that would destroy matched-filter coherence.
-7. **Architectural Duty-Cycle Power Bounds**: Demonstrates that operating at a $10\%$ duty cycle ($2\text{ ms}$ pulse, $20\text{ ms}$ PRI) throttles average transmitter electrical power to $\sim 0.54\text{ W}$. For the modeled transmitter payload load alone against a hypothetical $99\text{ Wh}$ pack, this corresponds to $\sim 183\text{ hours}$ of operation. **Note: This does NOT represent full AUV mission endurance**, as the complete vehicle requires substantial power for thruster propulsion, navigation computers, INS/DVL, cameras, and acoustic communications.
+4. **Memory Allocation on STM32G4**: Verifies that a $2.0\text{ ms}$ pulse at $4\text{ MSPS}$ requires exactly **8,000 samples** ($16.0\text{ KB}$ as `uint16_t`). The generated waveform LUTs occupy approximately $48\text{ KB}$ before firmware and other memory allocations; individual active DMA buffers require approximately $16\text{ KB}$.
+5. **Model-Derived Profile Selection**: Proves that distinguishing **propagation viability** from **mission utility** prevents `LOW_FREQUENCY` from artificially dominating all ranges, producing model-derived profile transition regimes under explicitly defined propagation and viability policy assumptions.
+6. **Jitter-Free Adaptation**: Proves that directional Schmitt-trigger hysteresis and debounce persistence filters ($N=2$) eliminate state flickering caused by potentiometer wiper noise or ADC thermal fluctuation.
+7. **Ping-Boundary Profile Latching**: Demonstrates that transmitter profile switches occur strictly at ping repetition boundaries, designed to be compatible with DMA transfer-complete synchronization to prevent mid-pulse phase jumps.
+8. **Architectural Duty-Cycle Power Bounds**: Demonstrates that operating at a $10\%$ duty cycle ($2\text{ ms}$ pulse, $20\text{ ms}$ PRI) throttles average transmitter electrical power to $\sim 0.54\text{ W}$. For the modeled transmitter payload load alone against a hypothetical $99\text{ Wh}$ pack, this corresponds to $\sim 183\text{ hours}$ of operation. **Note: This does NOT represent full AUV mission endurance**, as the complete vehicle requires substantial power for thruster propulsion, navigation computers, INS/DVL, cameras, and acoustic communications.
 
 ### What This Simulator Does Not Prove
 - **Piezoelectric Transducer Impedance**: Does not simulate the complex electrical impedance, electromechanical coupling coefficient ($k_t$), or Butterworth-Van Dyke (BVD) resonant response of the physical ceramic transducer.
@@ -71,11 +76,11 @@ Every parameter across both Python and MATLAB implementations is categorized int
 
 | Category | Description | Primary Parameters |
 |---|---|---|
-| **[FIXED]** | Locked implementation parameters | $F_s = 4.0\text{ MHz}$, $12\text{-bit DAC}$, $T_p = 2.0\text{ ms}$, $\text{PRI} = 20.0\text{ ms}$, $\text{MCU} = \text{STM32G474}$, $\text{Hann window}$ |
-| **[ADAPTIVE]** | Controlled by adaptation logic | Profile ID (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`), Amplitude Factor $A \in \{0.4, 0.7, 1.0\}$ |
-| **[ENVIRONMENT]** | Simulation scenario inputs | Depth ($50\text{ m}$), Temp ($20^\circ\text{C}$), Salinity ($35\text{ PSU}$), Turbidity ($0\text{–}100\text{ NTU}$), Ambient Noise ($55\text{ dB}$) |
-| **[ASSUMPTION]** | Unmeasured model assumptions | $P_{\text{active}} = 5.0\text{ W}$, $P_{\text{idle}} = 45\text{ mW}$, $P_{\text{elec}} = 0.30\text{ W}$, $V_{\text{bat}} = 12.0\text{ V}$, $E_{\text{bat}} = 99.0\text{ Wh}$ |
-| **[DERIVED]** | Analytically computed metrics | $N_p = 8000$, $\text{Table Size} = 16\text{ KB}$, $\text{Duty Cycle} = 10\%$, $P_{\text{avg}} = 0.540\text{ W}$, $\text{SQNR} \approx 69.7\text{ dB}$ |
+| **`[FIXED]`** | Locked implementation parameters | $F_s = 4.0\text{ MHz}$, $12\text{-bit DAC}$, $T_p = 2.0\text{ ms}$, $\text{PRI} = 20.0\text{ ms}$, $\text{MCU} = \text{STM32G474}$, $\text{Hann window}$ |
+| **`[ADAPTIVE]`** | Controlled by adaptation logic | Profile ID (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`), Amplitude Factor $A \in \{0.4, 0.7, 1.0\}$ |
+| **`[ENVIRONMENT]`** | Simulation scenario inputs | Range ($10\text{–}200\text{ m}$), Depth ($50\text{ m}$), Temp ($20^\circ\text{C}$), Salinity ($35\text{ PSU}$), Turbidity ($0\text{–}100\text{ NTU}$), Noise ($0\text{ dB}$) |
+| **`[ASSUMPTION]`** | Unmeasured model assumptions | $P_{\text{active}} = 5.0\text{ W}$, $P_{\text{idle}} = 45\text{ mW}$, $P_{\text{elec}} = 0.30\text{ W}$, $V_{\text{bat}} = 12.0\text{ V}$, $E_{\text{bat}} = 99.0\text{ Wh}$, $\text{Thresh}_{\text{viab}} = -65\text{ dB}$ |
+| **`[DERIVED]`** | Analytically computed metrics | $N_p = 8000$, $\text{Table Size} = 16\text{ KB}$, $\text{Duty Cycle} = 10\%$, $P_{\text{avg}} = 0.540\text{ W}$, $\text{SQNR} \approx 69.7\text{ dB}$ |
 
 ---
 
@@ -83,104 +88,90 @@ Every parameter across both Python and MATLAB implementations is categorized int
 
 ```
       Profile 1: LOW_FREQUENCY          Profile 2: BALANCED             Profile 3: HIGH_FREQUENCY
-      (High Particulate/Scattering)     (Default Operating Mode)        (High Beam Directivity)
+      (Long-Range / Degraded Channel)   (Default Operating Mode)        (Narrow-Beam Directivity Mode)
   [======== 100 - 220 kHz ========]   [======== 200 - 400 kHz ========]   [======== 350 - 500 kHz ========]
      fc = 160 kHz, B = 120 kHz           fc = 300 kHz, B = 200 kHz           fc = 425 kHz, B = 150 kHz
-     Penetrates turbidity plumes        Best Range Resolution (3.75 mm)     Narrow Acoustic Beam Directivity
+     Lower attenuation envelope          Best Range Resolution (3.75 mm)     Narrow Theoretical Beamwidth
 ```
 
 ### Acoustic Physics: Range Resolution vs. Beam Directivity
 - **Range Resolution ($\Delta R = \frac{c}{2B}$)**:
   - Governed strictly by the **sweep bandwidth $B$**.
-  - **Profile 2 (`BALANCED`)** has the widest bandwidth ($B = 200\text{ kHz}$), delivering the highest idealized bandwidth-based range resolution:
-    $$\Delta R = \frac{1500\text{ m/s}}{2 \times 200\times 10^3\text{ Hz}} = 3.75\text{ mm}$$
-  - **Profile 3 (`HIGH_FREQUENCY`)** has $B = 150\text{ kHz}$, giving $\Delta R = 5.00\text{ mm}$.
+  - **Profile 2 (`BALANCED`)** has an ideal theoretical range-resolution limit of approximately $3.75\text{ mm}$ under matched-filter pulse-compression assumptions ($B = 200\text{ kHz}$):
+    $$\Delta R = \frac{1500\text{ m/s}}{2 \times 200\times 10^3\text{ Hz}} \approx 3.75\text{ mm}$$
+  - **Profile 3 (`HIGH_FREQUENCY`)** has $B = 150\text{ kHz}$, giving an ideal limit of $5.00\text{ mm}$.
+  - **Profile 1 (`LOW_FREQUENCY`)** has $B = 120\text{ kHz}$, giving an ideal limit of $6.25\text{ mm}$.
 - **Beam Directivity ($\theta \propto \frac{\lambda}{D} = \frac{c}{f \cdot D}$)**:
-  - **Profile 3 (`HIGH_FREQUENCY`)** operates at the highest frequencies ($350\text{–}500\text{ kHz}$, $\lambda \approx 3.0\text{–}4.3\text{ mm}$), providing a significantly narrower acoustic beam pattern for a fixed physical transducer aperture diameter $D$.
+  - **Profile 3 (`HIGH_FREQUENCY`)** has a $1.417\times$ higher relative frequency-based directivity metric than the $300\text{ kHz}$ reference under a fixed-aperture theoretical assumption. Transducer geometry, aperture shape, beam patterns, array effects, and piezoelectric resonance are NOT modeled.
   - Therefore, `HIGH_FREQUENCY` is selected for **high spatial angular directivity**, not because it has superior range resolution over `BALANCED`.
+- **Long-Range Propagation Viability**:
+  - Within the implemented propagation model, **`LOW_FREQUENCY`** experiences lower modeled frequency-dependent attenuation ($\sim 18\text{ dB/km}$ vs $\sim 60\text{ dB/km}$) and therefore remains viable at ranges beyond $175\text{ m}$ where higher-frequency profiles fall below the simulation viability threshold.
 
 ---
 
-## 5. Automated Engineering Validation Test Suite
+## 5. Automated Engineering Validation (56 Tests Passed)
 
-The repository contains automated validation test suites in both MATLAB (`matlab/run_validation_suite.m`) and Python (`tests/test_simulator.py` and `tests/test_matlab_parity.py`) verifying all 23 requirements specified in SIH Problem 26058:
+The repository contains automated validation test suites in both MATLAB and Python verifying all 23 locked implementation requirements and 12 Priority 1 profile evaluation checks:
 
-| # | Group | Requirement | Verification Target | Status |
-|---|---|---|---|---|
-| **01** | Waveform | Sample Count | $N_p = F_s \cdot T_p = 8,000\text{ samples}$ | **PASSED** |
-| **02** | Waveform | Pulse Duration | Exact $2.000\text{ ms}$ discrete time base | **PASSED** |
-| **03** | Waveform | Chirp Slope | $k = (f_1 - f_0)/T_p$ ($\text{error} < 0.1\%$) | **PASSED** |
-| **04** | Waveform | Start Frequency | $f_0 = 200.0\text{ kHz}$ ($\text{error} < 0.1\%$) | **PASSED** |
-| **05** | Waveform | End Frequency | $f_1 = 400.0\text{ kHz}$ ($\text{error} < 0.1\%$) | **PASSED** |
-| **06** | Waveform | No NaN Values | Waveform contains no NaN elements | **PASSED** |
-| **07** | Waveform | No Inf Values | Waveform contains no Inf elements | **PASSED** |
-| **08** | Window | Window Length | Hann window length equals $N_p = 8000$ | **PASSED** |
-| **09** | Window | Window Application | Endpoints taper to zero ($<10^{-6}$) | **PASSED** |
-| **10** | DAC | Code Range | $0 \le \text{code} \le 4095$ (no overflow/underflow) | **PASSED** |
-| **11** | DAC | Data Type | `uint16` array for DMA peripheral | **PASSED** |
-| **12** | DAC | Midscale Behavior | Midscale code $2048$ at $0\text{ V AC}$ swing | **PASSED** |
-| **13** | DAC | Quantization Error | $\text{Max} \le 0.5\text{ LSB}, \text{SQNR} \ge 68\text{ dB}$ | **PASSED** |
-| **14** | Controller | Candidate Selection | $Q \le 0.30 \to \text{LOW}$, $Q \ge 0.75 \to \text{HIGH}$ | **PASSED** |
-| **15** | Controller | Hysteresis Stability | Deadbands prevent flicker from noise | **PASSED** |
-| **16** | Controller | Single Transient | 1-cycle spike does not switch profile | **PASSED** |
-| **17** | Controller | Two Consecutive | 2 cycles commit candidate profile ($N=2$) | **PASSED** |
-| **18** | Controller | Candidate Reset | Counter resets when input reverts | **PASSED** |
-| **19** | Ping State | Active Profile Frozen | Profile unchanged during active ping | **PASSED** |
-| **20** | Ping State | Pending Activates at PRI | Changes committed at ping boundary | **PASSED** |
-| **21** | Export | C Headers Generated | Valid syntax, includes, and guards | **PASSED** |
-| **22** | Export | Sample Count Metadata | Sample count & size macros match table | **PASSED** |
-| **23** | Export | Round-Trip Integrity | Parsed C table == Synthesized table bit-exact | **PASSED** |
+- **23 Hardware & Signal Validation Tests** (`matlab/run_validation_suite.m` & `tests/test_simulator.py`):
+  - Sample count ($8,000$), pulse duration ($2.0\text{ ms}$), chirp slope ($100\text{ MHz/s}$), start/end frequency, no NaN/Inf, Hann tapering, 12-bit DAC codes, midscale code ($2048$), SQNR ($69.7\text{ dB}$), hysteresis deadbands, debounce persistence ($N=2$), ping-boundary latching, and bit-exact C header export round-trip.
+- **12 Priority 1 Profile Evaluation Tests** (`matlab/run_profile_evaluation_tests.m` & `tests/test_profile_evaluation.py`):
+  - 5-point discrete frequency evaluation across band, positive finite attenuation, monotonic transmission loss with range, baseline attenuation ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), bandwidth-based range resolution verification ($\Delta R = 3.75\text{ mm}$ best), relative directivity ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), band confinement of evaluation points, long-range viability fallback to `LOW_FREQUENCY`, Survey Mode selection of `BALANCED`, Directivity Mode selection of `HIGH_FREQUENCY`, and bit-exact determinism.
 
 ---
 
-## 6. Generated Visualizations (`outputs_matlab/plots/`)
+## 6. Generated Visualizations (20 Engineering Figures)
 
-The simulation generates 13 engineering validation figures:
+All 20 engineering figures are generated into `outputs_matlab/plots/`:
 
-1. **`01_time_domain_waveform.png`**: Time-domain waveforms for all 3 profiles showing Hann window tapering.
-2. **`02_zoomed_waveform_section.png`**: 80 µs microscopic detail showing 12-bit DAC stair-steps tracking ideal curve.
-3. **`03_instantaneous_frequency.png`**: Linear frequency modulation trajectory tracking $200 \to 400\text{ kHz}$.
-4. **`04_fft_spectrum.png`**: Magnitude spectrum verifying passband and $>50\text{ dB}$ stopband suppression.
-5. **`05_spectrogram.png`**: STFT spectrogram showing straight linear time-frequency energy ridge.
-6. **`06_dac_quantization_error.png`**: Quantization error residuals strictly bounded within $[-0.5, +0.5]\text{ LSB}$.
-7. **`07_dac_code_histogram.png`**: DAC code distribution histogram centered at midscale code $2048$.
-8. **`08_profile_comparison.png`**: Spectral overlay of all three bands (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`).
-9. **`09_channel_quality_timeline.png`**: Predicted Channel Quality Score $Q(t)$ vs directional hysteresis thresholds.
-10. **`10_candidate_profile_timeline.png`**: Raw candidate profile timeline driven by instantaneous channel conditions.
-11. **`11_active_profile_timeline.png`**: Committed active profile timeline showing rock-solid stability after debounce.
-12. **`12_hysteresis_debounce_demo.png`**: Detailed demonstration of hysteresis deadband and $N=2$ debounce filter action.
-13. **`13_estimated_power_summary.png`**: Transmitter payload average power timeline across mission and pulse duration sensitivity analysis ($1\text{ ms}, 2\text{ ms}, 3\text{ ms}$).
+### Baseline Waveform & Controller Figures (1–13)
+1. `01_time_domain_waveform.png`: Time-domain waveforms for all 3 profiles showing Hann window tapering.
+2. `02_zoomed_waveform_section.png`: 80 µs microscopic detail showing 12-bit DAC stair-steps tracking ideal curve.
+3. `03_instantaneous_frequency.png`: Linear frequency modulation trajectory tracking $200 \to 400\text{ kHz}$.
+4. `04_fft_spectrum.png`: Magnitude spectrum verifying passband and $>50\text{ dB}$ stopband suppression.
+5. `05_spectrogram.png`: STFT spectrogram showing straight linear time-frequency energy ridge.
+6. `06_dac_quantization_error.png`: Quantization error residuals strictly bounded within $[-0.5, +0.5]\text{ LSB}$.
+7. `07_dac_code_histogram.png`: DAC code distribution histogram centered at midscale code $2048$.
+8. `08_profile_comparison.png`: Spectral overlay of all three bands (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`).
+9. `09_channel_quality_timeline.png`: Predicted Channel Quality Score $Q(t)$ vs directional hysteresis thresholds.
+10. `10_candidate_profile_timeline.png`: Raw candidate profile timeline driven by instantaneous channel conditions.
+11. `11_active_profile_timeline.png`: Committed active profile timeline showing rock-solid stability after debounce.
+12. `12_hysteresis_debounce_demo.png`: Detailed demonstration of hysteresis deadband and $N=2$ debounce filter action.
+13. `13_estimated_power_summary.png`: Transmitter payload average power timeline across mission and pulse duration sensitivity analysis ($1\text{ ms}, 2\text{ ms}, 3\text{ ms}$).
+
+### Priority 1 Evaluation & Experiment Figures (Exp 1–7)
+14. `exp01_attenuation_vs_frequency.png`: Attenuation curve across $80\text{–}520\text{ kHz}$ with 5 discrete evaluation points marked per profile.
+15. `exp02_propagation_vs_range.png`: Relative propagation margin vs range ($5\text{–}200\text{ m}$) for all 3 profiles on the same axis with viability threshold ($-65\text{ dB}$).
+16. `exp03_theoretical_range_resolution.png`: Theoretical range resolution comparison showing `BALANCED` achieving $3.75\text{ mm}$ resolution.
+17. `exp04_relative_directivity_comparison.png`: Relative theoretical directivity factor bar chart (*"Relative theoretical metric — fixed aperture assumption"*).
+18. `exp05_profile_winner_vs_range.png`: Profile selection vs range under Survey (resolution priority) and Directivity (narrow-beam priority) mission objectives.
+19. `exp06_performance_margin_vs_range.png`: Candidate margin above viability and `profile_selection_confidence` vs range.
+20. `exp07_environmental_sensitivity_summary.png`: Multi-panel sensitivity analysis of $T, S, D$ on sound speed, absorption, and range resolution.
 
 ---
 
-## 7. Firmware-Ready Prototype C Header Files
+## 7. Execution Commands
 
-Exported headers in `outputs_matlab/headers/` and `outputs/headers/`:
-- `chirp_low_frequency.h`: 12-bit DAC lookup table for $100\text{–}220\text{ kHz}$ ($8,000$ samples, $16\text{ KB}$).
-- `chirp_balanced.h`: 12-bit DAC lookup table for $200\text{–}400\text{ kHz}$ ($8,000$ samples, $16\text{ KB}$).
-- `chirp_high_frequency.h`: 12-bit DAC lookup table for $350\text{–}500\text{ kHz}$ ($8,000$ samples, $16\text{ KB}$).
-- `sonar_profiles.h`: Master registry with `SonarProfileDescriptor_t` structs for zero-overhead runtime indexing.
-
----
-
-## 8. Execution Commands
-
-### Running Python Pipeline
+### Running Python Pipeline & Experiments
 ```bash
 python src/main.py
+python -m src.experiments
 ```
 
-### Running Complete Python & Parity Test Suite (44 Tests)
+### Running Complete Python Test Suite (56 Tests)
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-### Running MATLAB Simulation & 13 Plots
+### Running MATLAB Simulation, Experiments, and Tests
 ```bash
 # In Python execution mirror:
 python matlab/generate_matlab_results.py
 
 # In MATLAB interactive prompt:
 cd matlab
-run_simulation
+run_simulation;
+run_experiments;
+run_validation_suite;
+run_profile_evaluation_tests;
 ```

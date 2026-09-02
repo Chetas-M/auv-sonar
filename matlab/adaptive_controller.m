@@ -3,6 +3,10 @@
 % Description: Deterministic finite-state controller with directional Schmitt-trigger
 % hysteresis, N=2 debounce persistence, and atomic ping-boundary profile latching.
 %
+% Supports both:
+%   1. Direct candidate from evaluate_profile_performance struct
+%   2. Scalar channel quality score Q with directional hysteresis
+%
 % State Variables Maintained:
 %   - active_profile_id:    Currently transmitting profile (latched at ping start)
 %   - pending_profile_id:   Committed candidate waiting for next ping boundary
@@ -10,7 +14,7 @@
 %   - debounce_counter:     Number of consecutive evaluation cycles candidate has held
 % ==============================================================================
 
-function [next_state, decision_log] = adaptive_controller(Q, current_state, cfg)
+function [next_state, decision_log] = adaptive_controller(input_signal, current_state, cfg)
     if nargin < 3
         cfg = config_sonar();
     end
@@ -22,34 +26,45 @@ function [next_state, decision_log] = adaptive_controller(Q, current_state, cfg)
     debounce_count = current_state.debounce_counter;
 
     % --------------------------------------------------------------------------
-    % 1. Directional Schmitt-Trigger Hysteresis Logic
-    % Profile 1 = LOW_FREQUENCY, Profile 2 = BALANCED, Profile 3 = HIGH_FREQUENCY
+    % 1. Determine Raw Candidate Profile
     % --------------------------------------------------------------------------
     raw_candidate = pending_id;
+    Q_val = 1.0;
 
-    if pending_id == 3 % Currently in Profile 3 (HIGH_FREQUENCY)
-        if Q <= cfg.thresh_bal_to_low
-            raw_candidate = 1; % Severe degradation straight to LOW_FREQUENCY
-        elseif Q < cfg.thresh_high_to_bal % Fall below 0.65 (lower threshold)
-            raw_candidate = 2; % Drop down to BALANCED
-        else
-            raw_candidate = 3; % Maintain HIGH_FREQUENCY
+    if isstruct(input_signal) && isfield(input_signal, 'candidate_profile_id')
+        % Driven directly by profile performance evaluation decision
+        raw_candidate = input_signal.candidate_profile_id;
+        if isfield(input_signal, 'profile_selection_confidence')
+            Q_val = input_signal.profile_selection_confidence;
         end
-    elseif pending_id == 2 % Currently in Profile 2 (BALANCED)
-        if Q >= cfg.thresh_bal_to_high % Rise above 0.75 (upper threshold)
-            raw_candidate = 3; % Promote to HIGH_FREQUENCY
-        elseif Q <= cfg.thresh_bal_to_low % Fall below 0.30 (lower threshold)
-            raw_candidate = 1; % Demote to LOW_FREQUENCY
-        else
-            raw_candidate = 2; % Maintain BALANCED (within deadband)
-        end
-    elseif pending_id == 1 % Currently in Profile 1 (LOW_FREQUENCY)
-        if Q >= cfg.thresh_bal_to_high
-            raw_candidate = 3; % Direct improvement straight to HIGH_FREQUENCY
-        elseif Q > cfg.thresh_low_to_bal % Rise above 0.40 (upper threshold)
-            raw_candidate = 2; % Promote to BALANCED
-        else
-            raw_candidate = 1; % Maintain LOW_FREQUENCY
+    else
+        % Driven by scalar Channel Quality Score Q via Directional Schmitt Hysteresis
+        Q_val = input_signal;
+
+        if pending_id == 3 % Currently in Profile 3 (HIGH_FREQUENCY)
+            if Q_val <= cfg.thresh_bal_to_low
+                raw_candidate = 1; % Severe degradation straight to LOW_FREQUENCY
+            elseif Q_val < cfg.thresh_high_to_bal % Fall below 0.65 (lower threshold)
+                raw_candidate = 2; % Drop down to BALANCED
+            else
+                raw_candidate = 3; % Maintain HIGH_FREQUENCY
+            end
+        elseif pending_id == 2 % Currently in Profile 2 (BALANCED)
+            if Q_val >= cfg.thresh_bal_to_high % Rise above 0.75 (upper threshold)
+                raw_candidate = 3; % Promote to HIGH_FREQUENCY
+            elseif Q_val <= cfg.thresh_bal_to_low % Fall below 0.30 (lower threshold)
+                raw_candidate = 1; % Demote to LOW_FREQUENCY
+            else
+                raw_candidate = 2; % Maintain BALANCED (within deadband)
+            end
+        elseif pending_id == 1 % Currently in Profile 1 (LOW_FREQUENCY)
+            if Q_val >= cfg.thresh_bal_to_high
+                raw_candidate = 3; % Direct improvement straight to HIGH_FREQUENCY
+            elseif Q_val > cfg.thresh_low_to_bal % Rise above 0.40 (upper threshold)
+                raw_candidate = 2; % Promote to BALANCED
+            else
+                raw_candidate = 1; % Maintain LOW_FREQUENCY
+            end
         end
     end
 
@@ -96,7 +111,6 @@ function [next_state, decision_log] = adaptive_controller(Q, current_state, cfg)
     % 4. Atomic Ping-Boundary Latching
     % Active profile CANNOT change mid-ping; it latches from pending at ping start.
     % --------------------------------------------------------------------------
-    % Default: at next ping start, active_profile latches pending_profile
     new_active_id = new_pending_id;
 
     next_state = struct();
@@ -110,7 +124,8 @@ function [next_state, decision_log] = adaptive_controller(Q, current_state, cfg)
 
     % Detailed decision logging
     decision_log = struct();
-    decision_log.Q = Q;
+    decision_log.Q = Q_val;
+    decision_log.profile_selection_confidence = Q_val;
     decision_log.raw_candidate_id = raw_candidate;
     decision_log.candidate_profile_id = candidate_id;
     decision_log.debounce_counter = debounce_count;

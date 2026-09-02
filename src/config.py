@@ -70,6 +70,7 @@ POWER_IDLE_WATTS: float = 0.045           # Power between pings (PA shut down, M
 POWER_ELEC_OVERHEAD_W: float = 0.30       # Electronic baseline overhead
 SUPPLY_VOLTAGE_VOLTS: float = 12.0        # Primary AUV battery bus voltage (V_bat)
 AUV_BATTERY_CAPACITY_WH: float = 99.0     # Standard subsea battery pack (99 Wh)
+VIABILITY_THRESHOLD_DB: float = -65.0     # [ASSUMPTION] Relative viability threshold (policy parameter, not physical detection limit)
 
 
 @dataclass(frozen=True)

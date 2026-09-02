@@ -24,6 +24,9 @@ class TestMatlabArchitectureParity(unittest.TestCase):
             "export_c_headers.m",
             "run_validation_suite.m",
             "run_simulation.m",
+            "evaluate_profile_performance.m",
+            "run_experiments.m",
+            "run_profile_evaluation_tests.m",
             "README.md",
         ]
 

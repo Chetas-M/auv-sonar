@@ -7,16 +7,20 @@ This directory contains the official MATLAB-based digital twin simulator for the
 ---
 
 > [!IMPORTANT]
-> **Honest Engineering Scope & Limitation Statement**:
-> This simulation validates waveform generation, environmental scenario mapping, channel quality estimation, hysteresis-backed profile adaptation, 12-bit DAC quantization, DMA buffer sizing, and estimated duty-cycle power dissipation.
+> **Core Project Narrative & Engineering Scope Statement**:
+> We built and validated a digital twin of an adaptive sonar transmitter waveform pipeline. The simulation evaluates frequency-dependent propagation using established absorption equations and compares three predefined LFM profiles under explicit environmental and mission assumptions. A two-tier policy first rejects profiles that fail a defined relative propagation criterion and then selects among viable profiles based on the simulated mission objective: resolution, directivity, or long-range robustness.
+>
+> The digital twin models the **transmitter payload pipeline**:
+> Waveform synthesis $\to$ 12-bit DAC quantization $\to$ DMA memory mapping $\to$ frequency-dependent attenuation $\to$ propagation viability filtering $\to$ mission objective profile selection $\to$ directional hysteresis & debounce $\to$ atomic ping-boundary latching $\to$ duty-cycle power dissipation.
 >
 > It **DOES NOT** claim to validate:
-> - Real underwater acoustic performance
-> - Actual piezoelectric transducer impedance or resonance
-> - Acoustic propagation measurements in physical water
+> - Real underwater acoustic performance or measured echoes
+> - Physical two-way echo reflection, target scattering strength, or receiver hydrophone gain
+> - Actual piezoelectric transducer impedance or ceramic resonance
+> - Acoustic propagation measurements in physical ocean water
 > - Power amplifier (PA) thermal stability or analog settling
 > - Actual hardware current consumption
-> - Receiver hardware or hydrophone acoustic feedback
+> - Receiver hardware or closed-loop hydrophone acoustic feedback
 > - Experimentally calibrated turbidity-to-frequency mapping
 >
 > The physical hardware demonstration is **transmitter-side only**.
@@ -49,17 +53,18 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 ### [ADAPTIVE] Runtime Parameters (Controlled by Adaptation Logic)
 | Parameter | Symbol | Range / States | Selection Mechanism |
 |---|---|---|---|
-| **Active Profile** | $\text{Profile\_ID}$ | `1 (LOW_FREQUENCY), 2 (BALANCED), 3 (HIGH_FREQUENCY)` | Selected via Channel Quality Score $Q$ with directional Schmitt hysteresis and debounce. |
+| **Active Profile** | $\text{Profile\_ID}$ | `1 (LOW_FREQUENCY), 2 (BALANCED), 3 (HIGH_FREQUENCY)` | Selected via Propagation Viability Filter + Mission Objective Hierarchy. |
 | **Transmit Amplitude**| $A$ | $0.40, 0.70, 1.00$ | Normalized scaling: $A=1.0$ (Low Freq), $A=0.7$ (Balanced), $A=0.4$ (High Freq). |
 
 ### [ENVIRONMENT] Environmental Scenario Inputs (Simulation Variables)
 | Parameter | Symbol | Baseline | Role in Simulation |
 |---|---|---|---|
+| **Target Range** | $R$ | $10.0 \to 200.0\text{ m}$ | Direct physical driver of spherical spreading transmission loss ($20\log_{10} R$). |
 | **Depth** | $D$ | $50.0\text{ m}$ | Inputs to sound speed and hydrostatic pressure absorption equations. |
 | **Temperature** | $T$ | $20.0^\circ\text{C}$ | Influences seawater sound speed and chemical relaxation absorption frequencies. |
 | **Salinity** | $S$ | $35.0\text{ PSU}$ | Standard seawater salinity scale. |
-| **Turbidity** | $\text{turb}$ | $0 \to 100\text{ NTU}$ | Drives simulated particulate acoustic scattering loss ($\propto f^2$). |
-| **Ambient Noise**| $N_{\text{amb}}$| $55.0\text{ dB}$ | Background acoustic noise power spectral density in simulation. |
+| **Turbidity** | $\text{turb}$ | $0 \to 100\text{ NTU}$ | Optional sensitivity heuristic for particulate scattering loss ($\propto f^2$). |
+| **Noise Penalty** | $\text{NP}_{\text{sim}}$ | $0.0\text{ dB}$ | Normalized relative noise penalty used to test controller robustness; not calibrated to a physical hydrophone. |
 
 ### [ASSUMPTION] Simulation Model Assumptions (Unmeasured Estimates)
 | Parameter | Symbol | Assumed Value | Purpose & Limitation |
@@ -69,6 +74,8 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 | **Analog Static Electronics**| $P_{\text{elec}}$ | $0.300\text{ W}$ | Base electronics power when transmitter is enabled. |
 | **Battery Rail Voltage** | $V_{\text{bat}}$ | $12.0\text{ V}$ | Assumed subsea battery bus voltage for current calculation. |
 | **Hypothetical Pack** | $E_{\text{bat}}$ | $99.0\text{ Wh}$ | Standard carry-on compliant battery pack for transmitter-only load model. |
+| **Relative Source Level** | $SL_{\text{rel}}$ | $0.0\text{ dB reference}$ | Normalized relative source level. No uncalibrated absolute acoustic SPL claimed. |
+| **Viability Threshold** | $\text{Thresh}_{\text{viab}}$ | $-65.0\text{ dB relative}$ | Policy parameter used to demonstrate adaptive switching; not calibrated against a physical receiver. |
 
 ### [DERIVED] Analytically Computed Values
 | Parameter | Expression | Value | Significance |
@@ -77,148 +84,136 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 | **Buffer Memory** | $N_p \times 2\text{ bytes}$ | $16,000\text{ bytes}$ | $15.625\text{ KB}$ per profile as `uint16_t`. |
 | **Duty Cycle** | $D = T_p / \text{PRI}$ | $10.0\%$ | $2.0\text{ ms} / 20.0\text{ ms} = 0.10$. |
 | **Average Power** | $P_{\text{avg}} = P_{\text{act}}D + P_{\text{idle}}(1-D)$ | $0.540\text{ W}$ | Nominal average power at $10\%$ duty cycle and $A=1.0$. |
-| **SRAM Load** | $\text{LUT} / 128\text{ KB}$ | $12.5\%$ | Memory footprint in STM32G474 SRAM. |
-| **Flash Load** | $3 \times \text{LUT} / 512\text{ KB}$ | $9.37\%$ | Storage for all 3 profiles in STM32G474 Flash. |
+| **Active DMA Buffer** | $N_p \times 2\text{ bytes}$ | $16\text{ KB}$ | Individual active DMA buffer (12.5% of 128 KB SRAM before stack/heap). |
+| **Waveform Flash LUTs** | $3 \times 16\text{ KB}$ | $48\text{ KB}$ | Storage for 3 profile LUTs (9.37% of 512 KB Flash before firmware code). |
 
 ---
 
-## 2. Three Canonical Transmission Profiles
+## 2. Three Canonical Transmission Profiles & Physical Justification
 
 ```
       Profile 1: LOW_FREQUENCY          Profile 2: BALANCED             Profile 3: HIGH_FREQUENCY
-      (High Particulate/Scattering)     (Default Operating Mode)        (High Beam Directivity)
+      (Long-Range / Degraded Channel)   (Default Operating Mode)        (Narrow-Beam Directivity Mode)
   [======== 100 - 220 kHz ========]   [======== 200 - 400 kHz ========]   [======== 350 - 500 kHz ========]
      fc = 160 kHz, B = 120 kHz           fc = 300 kHz, B = 200 kHz           fc = 425 kHz, B = 150 kHz
-     Penetrates turbidity plumes        Best Range Resolution (3.75 mm)     Narrow Acoustic Beam Directivity
+     Lower attenuation envelope          Best Range Resolution (3.75 mm)     Narrow Theoretical Beamwidth
 ```
 
-### Critical Acoustic Distinction: Range Resolution vs. Beam Directivity
-- **Range Resolution ($\Delta R = \frac{c}{2B}$)**:
-  - Theoretical range resolution is governed strictly by the **sweep bandwidth $B$**, assuming matched-filter compression.
-  - **Profile 2 (`BALANCED`)** possesses the widest bandwidth ($B = 200\text{ kHz}$), yielding an idealized range resolution of **$\Delta R = \frac{1500}{2 \times 200\times 10^3} = 3.75\text{ mm}$**.
-  - **Profile 3 (`HIGH_FREQUENCY`)** has $B = 150\text{ kHz}$, yielding $\Delta R = \frac{1500}{2 \times 150\times 10^3} = 5.00\text{ mm}$.
-- **Beam Directivity ($\theta \propto \frac{\lambda}{D} = \frac{c}{f \cdot D}$)**:
-  - **Profile 3 (`HIGH_FREQUENCY`)** operates at the highest frequencies ($350\text{–}500\text{ kHz}$, $\lambda \approx 3.0\text{–}4.3\text{ mm}$), providing a significantly tighter acoustic beam pattern and reduced angular beamwidth for a fixed physical transducer aperture diameter $D$.
-  - Therefore, `HIGH_FREQUENCY` is selected for **high spatial angular directivity**, not because it has superior range resolution over `BALANCED`.
+### Why Does Each Profile Exist?
+- **Profile 1 (`LOW_FREQUENCY`)**:
+  - Sweep: $100.0\text{–}220.0\text{ kHz}$ ($f_c = 160.0\text{ kHz}, B = 120.0\text{ kHz}$)
+  - Justification: Within the implemented propagation model, `LOW_FREQUENCY` experiences lower modeled frequency-dependent attenuation ($\sim 18\text{ dB/km}$ vs $\sim 60\text{ dB/km}$ at $425\text{ kHz}$) and therefore remains viable at ranges beyond $175\text{ m}$ where higher-frequency profiles fall below the simulation viability threshold.
+- **Profile 2 (`BALANCED`)**:
+  - Sweep: $200.0\text{–}400.0\text{ kHz}$ ($f_c = 300.0\text{ kHz}, B = 200.0\text{ kHz}$)
+  - Justification: Possesses the largest sweep bandwidth ($B = 200\text{ kHz}$), providing an ideal theoretical range-resolution limit of approximately $3.75\text{ mm}$ under matched-filter pulse-compression assumptions ($\Delta R = \frac{c}{2B}$). It serves as the primary survey default whenever propagation viability is satisfied.
+- **Profile 3 (`HIGH_FREQUENCY`)**:
+  - Sweep: $350.0\text{–}500.0\text{ kHz}$ ($f_c = 425.0\text{ kHz}, B = 150.0\text{ kHz}$)
+  - Justification: Has a $1.417\times$ higher relative frequency-based directivity metric than the $300\text{ kHz}$ reference under a fixed-aperture theoretical assumption ($\theta \propto \frac{\lambda}{D} = \frac{c}{f \cdot D}$). Transducer geometry, aperture shape, beam patterns, array effects, and piezoelectric resonance are NOT modeled. Selected when the simulated vehicle prioritizes narrow-beam spatial directivity.
 
 ---
 
-## 3. Explainable Adaptive Decision Architecture
+## 3. Profile Evaluation & Selection Architecture (Priority 1)
 
-```
-Environmental Scenario Inputs (Turbidity, Depth, Temp, Salinity, Ambient Noise)
-                                      ↓
-                   Simplified Acoustic Channel Model
-   - Sound speed c(T,S,D) via Mackenzie (1981) formula
-   - High-frequency chemical absorption alpha_chem(f) via Ainslie-McColm (1998)
-   - Particulate scattering loss alpha_turb(f, turb)
-                                      ↓
-              Deterministic Channel Quality Score Q in [0, 1]
-              Q = 0.50*q_env + 0.25*q_attn + 0.25*q_noise
-                                      ↓
-            Directional Schmitt-Trigger Hysteresis State Machine
-        - In BALANCED:  Q >= 0.75 -> HIGH_FREQ;  Q <= 0.30 -> LOW_FREQ
-        - In HIGH_FREQ: Q < 0.65  -> BALANCED;   Q <= 0.30 -> LOW_FREQ
-        - In LOW_FREQ:  Q > 0.40  -> BALANCED;   Q >= 0.75 -> HIGH_FREQ
-        - Deadbands [0.30, 0.40] and [0.65, 0.75] prevent profile flickering
-                                      ↓
-                   Debounce Persistence Filter (N = 2)
-       Candidate condition must persist for 2 consecutive evaluations
-                                      ↓
-                  Atomic Ping-Boundary Profile Latching
-        Active profile changes strictly at the start of the next PRI
-                                      ↓
-               Synthesized 12-Bit DAC Output (0 to 4095)
+```text
+                       ENVIRONMENTAL SCENARIO
+                   (Range, Temp, Salinity, Depth)
+                                 │
+                                 ▼
+                     PROFILE EVALUATION ENGINE
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+    LOW_FREQUENCY             BALANCED            HIGH_FREQUENCY
+  (100 - 220 kHz)         (200 - 400 kHz)        (350 - 500 kHz)
+         │                       │                       │
+         ▼                       ▼                       ▼
+  Band Attenuation        Band Attenuation        Band Attenuation
+  Transmission Loss       Transmission Loss       Transmission Loss
+  Relative Margin         Relative Margin         Relative Margin
+  Range Resolution        Range Resolution        Range Resolution
+  Rel. Directivity        Rel. Directivity        Rel. Directivity
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 ▼
+                    PROPAGATION VIABILITY FILTER
+               (Margin >= Relative Viability Threshold?)
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+       All / Multiple Viable             Single / None Viable
+                 │                               │
+                 ▼                               ▼
+      MISSION OBJECTIVE SELECTOR         FAIL-SAFE SELECTION
+     - Default: BALANCED (Best res.)    - Select LOW_FREQUENCY
+     - High-Directivity: HIGH_FREQ        (Lowest attenuation)
+                 │                               │
+                 └───────────────┬───────────────┘
+                                 ▼
+                       RAW CANDIDATE PROFILE
+                   + profile_selection_confidence
+                                 │
+                                 ▼
+                       DIRECTIONAL HYSTERESIS
+                      (Performance Deadbands)
+                                 │
+                                 ▼
+                    DEBOUNCE PERSISTENCE FILTER
+                         (N = 2 Pings)
+                                 │
+                                 ▼
+                          PENDING PROFILE
+                                 │
+                                 ▼
+                    ATOMIC PING-BOUNDARY LATCH
+                      (DMA TC Interrupt / PRI)
+                                 │
+                                 ▼
+                          ACTIVE PROFILE
 ```
 
 ---
 
-## 4. How to Run the Simulation in MATLAB
+## 4. How to Run in MATLAB
 
 ### Prerequisites
-- MATLAB R2020a or later (also compatible with GNU Octave 7.0+).
-- Signal Processing Toolbox (recommended for `spectrogram`, fallback provided).
+- MATLAB R2020a or later (also GNU Octave 7.0+ compatible).
 
-### Running the Complete Digital Twin Simulation
-Open MATLAB, navigate to `d:\AUV sonar\matlab`, and execute:
-
+### Commands
 ```matlab
-% 1. Add matlab directory to path
+% 1. Add directory to path
 addpath(pwd);
 
-% 2. Run master simulation (generates all 13 plots, memory budget, power model, headers)
-run_simulation
+% 2. Run master simulation (generates 13 waveform/controller validation figures and C headers)
+run_simulation;
+
+% 3. Run Priority 1 parameter sweep experiments (generates 7 experiment figures)
+run_experiments;
+
+% 4. Run full validation suites
+run_validation_suite;             % 23-point DSP/waveform/quantization suite
+run_profile_evaluation_tests;     % 12-point Priority 1 profile evaluation suite
 ```
 
-### Running the 23-Point Automated Validation Suite
-```matlab
-% Runs all 23 DSP, window, quantization, controller, ping-state, and export tests
-run_validation_suite
-```
+---
+
+## 5. Seven Priority 1 Engineering Figures (`outputs_matlab/plots/`)
+
+1. **`exp01_attenuation_vs_frequency.png`**: Frequency-dependent attenuation curve across $80\text{–}520\text{ kHz}$ with 5 discrete evaluation points marked per profile.
+2. **`exp02_propagation_vs_range.png`**: Modeled one-way propagation margin vs range ($5\text{–}200\text{ m}$) for all 3 profiles on the same axis with simulation viability threshold ($-65\text{ dB}$).
+3. **`exp03_theoretical_range_resolution.png`**: Theoretical range resolution limit comparison showing `BALANCED` achieving $3.75\text{ mm}$ under matched-filter assumptions.
+4. **`exp04_relative_directivity_comparison.png`**: Relative frequency-based directivity factor bar chart (*"Relative theoretical metric — fixed aperture assumption; transducer geometry and beam patterns are NOT modeled"*).
+5. **`exp05_profile_winner_vs_range.png`**: Profile selection vs range under Survey (resolution priority) and Directivity (narrow-beam priority) mission objectives.
+6. **`exp06_performance_margin_vs_range.png`**: Candidate margin above viability and dual confidence metrics (`viability_confidence` & `selection_confidence`) vs range.
+7. **`exp07_environmental_sensitivity_summary.png`**: Multi-panel sensitivity analysis of $T, S, D$ on sound speed, absorption, and range resolution.
 
 ---
 
-## 5. Thirteen Generated Validation Figures (`outputs_matlab/plots/`)
+## 6. Critical Engineering Review of Priority 1 Decisions
 
-1. **`01_time_domain_waveform.png`**: Time-domain waveforms for all 3 profiles showing smooth Hann envelope tapering.
-2. **`02_zoomed_waveform_section.png`**: Microscopic 80 µs view showing 12-bit DAC stair-step discretization tracking continuous reference.
-3. **`03_instantaneous_frequency.png`**: Linear frequency modulation trajectory tracking $200 \to 400\text{ kHz}$ ($k = 100\text{ MHz/s}$).
-4. **`04_fft_spectrum.png`**: Power spectral density verifying in-band passband and $>50\text{ dB}$ stopband rejection.
-5. **`05_spectrogram.png`**: STFT spectrogram showing straight time-frequency energy ridge ($100\text{ MHz/s}$ slope).
-6. **`06_dac_quantization_error.png`**: Quantization error residuals strictly bounded within $[-0.5, +0.5]\text{ LSB}$.
-7. **`07_dac_code_histogram.png`**: 12-bit code distribution verifying midscale centering at code $2048$.
-8. **`08_profile_comparison.png`**: Spectral overlay of all three bands (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`).
-9. **`09_channel_quality_timeline.png`**: Predicted Channel Quality Score $Q(t)$ plotted against directional hysteresis thresholds.
-10. **`10_candidate_profile_timeline.png`**: Raw candidate profile timeline driven by instantaneous channel score.
-11. **`11_active_profile_timeline.png`**: Committed active profile timeline showing rock-solid stability after debounce.
-12. **`12_hysteresis_debounce_demo.png`**: Detailed view demonstrating deadband hysteresis and $N=2$ debounce filtering during a sediment plume event.
-13. **`13_estimated_power_summary.png`**: Transmitter payload average power timeline across mission and pulse duration sensitivity analysis ($1\text{ ms}, 2\text{ ms}, 3\text{ ms}$).
-
----
-
-## 6. Twenty-Three Automated Engineering Checks (`run_validation_suite.m`)
-
-| # | Validation Check | Target Specification | Measured Result | Status |
-|---|---|---|---|---|
-| **01** | **Sample Count** | $N_p = 8,000\text{ samples}$ | Exactly $8,000$ | **PASSED** |
-| **02** | **Pulse Duration** | $T_p = 2.0\text{ ms}$ | $2.000\text{ ms}$ | **PASSED** |
-| **03** | **Chirp Slope** | $k = 100.0\text{ MHz/s}$ ($\text{err} < 0.1\%$) | Error $= 0.0000\%$ | **PASSED** |
-| **04** | **Start Frequency** | $f_0 = 200.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0062\%$ | **PASSED** |
-| **05** | **End Frequency** | $f_1 = 400.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0031\%$ | **PASSED** |
-| **06** | **No NaN Values** | Waveform contains no NaN | 0 NaN elements | **PASSED** |
-| **07** | **No Inf Values** | Waveform contains no Inf | 0 Inf elements | **PASSED** |
-| **08** | **Hann Window Length** | $N = 8,000\text{ samples}$ | Exactly $8,000$ | **PASSED** |
-| **09** | **Window Application**| $w[0] = 0, w[N-1] = 0$, $x[0]=0, x[N-1]=0$ | $< 10^{-6}$ | **PASSED** |
-| **10** | **DAC Code Range** | $0 \le \text{code} \le 4095$ | No overflow/underflow | **PASSED** |
-| **11** | **DAC Data Type** | `uint16` for DMA peripheral | `uint16` | **PASSED** |
-| **12** | **Midscale Correctness**| $\text{code} = 2048$ at $0\text{ V AC}$ swing | Exactly $2048$ | **PASSED** |
-| **13** | **Quantization Error** | $\text{Max} \le 0.5\text{ LSB}, \text{SQNR} \ge 68\text{ dB}$ | $0.500\text{ LSB}, 69.67\text{ dB}$ | **PASSED** |
-| **14** | **Candidate Selection**| $Q=0.20 \to \text{LOW}, Q=0.85 \to \text{HIGH}$| Exact state mapping | **PASSED** |
-| **15** | **Hysteresis Stability**| Suppresses noise inside deadband | Zero flicker in deadband | **PASSED** |
-| **16** | **Single Transient** | 1-cycle spike does not switch profile | Retained current profile | **PASSED** |
-| **17** | **Two Consecutive** | 2 consecutive cycles commit change | Profile committed | **PASSED** |
-| **18** | **Candidate Reset** | Counter resets when input reverts | Counter reset to 0 | **PASSED** |
-| **19** | **Active Frozen in Ping**| Active profile unchanged during transmit | Strictly latched | **PASSED** |
-| **20** | **Pending Activates at PRI**| Pending switches at PRI boundary | Atomic PRI boundary update | **PASSED** |
-| **21** | **C Headers Generated**| All 4 headers exist with valid guards | All 4 files verified | **PASSED** |
-| **22** | **Sample Metadata** | Sample count and byte size macros match | Exact macro match | **PASSED** |
-| **23** | **Bit-Exact Round-Trip**| Parsed C table == Synthesized table | 8,000 / 8,000 bit-exact | **PASSED** |
-
----
-
-## 7. Firmware C Header Export
-
-Firmware-ready prototype headers aligned for DMA burst transfers are exported to `outputs_matlab/headers/`:
-- `chirp_low_frequency.h` ($100\text{–}220\text{ kHz}$, 8,000 samples, 16 KB)
-- `chirp_balanced.h` ($200\text{–}400\text{ kHz}$, 8,000 samples, 16 KB)
-- `chirp_high_frequency.h` ($350\text{–}500\text{ kHz}$, 8,000 samples, 16 KB)
-- `sonar_profiles.h` (Master registry with `SonarProfileDescriptor_t` lookup structs)
-
----
-
-## 8. Embedded Hardware Bring-Up Protocol (STM32G474)
-
-1. **Timer TRGO**: Configure TIM6 (or TIM2) at $170\text{ MHz}$ SYSCLK to generate a $4.0\text{ MHz}$ update trigger ($170 / 42.5$).
-2. **High-Speed DAC Configuration**: Set STM32 DAC to **unbuffered mode** (`DAC_OUTPUTBUFFER_DISABLE`) to avoid slew-rate limitation.
-3. **External Buffer & Reconstruction Filter**: Route DAC pin to a high-speed op-amp (e.g. OPA350 or ADA4807) configured as an active low-pass reconstruction filter ($f_c \approx 750\text{ kHz}$) before driving the power amplifier.
-4. **Bench Measurement**: Probe the analog output with an oscilloscope ($>50\text{ MSPS}$ acquisition rate) and spectrum analyzer to measure physical rise time, THD, and harmonic suppression before water tank testing.
+| Decision | What Was Implemented? | Why Selected? | Alternatives Considered | Why Alternatives Rejected? | Introduced Assumptions | What Could Make It Wrong? | Hardware Impact |
+|---|---|---|---|---|---|---|---|
+| **5-Point Frequency Sampling** | Evaluated Ainslie-McColm absorption at 5 discrete points across each profile's bandwidth. | Captures frequency variation across wide chirp bandwidths ($120\text{–}200\text{ kHz}$). | Single center-frequency evaluation; continuous integral. | Single point masks band slope; continuous integral is computationally heavy on embedded targets. | Assumes 5-point mean adequately approximates continuous wideband attenuation. | Extreme non-linear chemical relaxation spikes within band. | None (pre-silicon analytical evaluation). |
+| **Decoupling Viability from Utility** | Two-tier filter: check propagation viability first, then select based on mission objective. | Prevents `LOW_FREQUENCY` from artificially dominating all ranges due to low attenuation alone. | Single composite weighted score $w_1 TL + w_2 \Delta R + w_3 \text{Dir}$. | Arbitrary linear weightings lack physical units and obscure physical trade-offs. | Assumes a defined relative viability threshold ($-65\text{ dB}$). | Target reflectivity or receiver noise floor deviates from assumed threshold. | Matches standard AUV payload mission planning. |
+| **Normalized Relative Margin** | Used $0\text{ dB}$ relative transmit reference and relative transmission loss $-TL - \text{NP}_{\text{sim}}$. | Avoids claiming an unverified absolute acoustic sound pressure level ($180\text{ dB}$). | Hardcoded $180\text{ dB re } 1\,\mu\text{Pa @ 1m}$. | Unjustified physical claim without transducer electromechanical coupling modeling. | Assumes one-way transmission loss is dominated by spherical spreading ($20\log_{10} R$). | Cylindrical shallow-water waveguide spreading ($10\log_{10} R$) or multipath. | Preserves honest engineering scope. |
+| **Relative Viability Threshold (-65 dB)** | Explicitly classified as `[SIMULATION ASSUMPTION]`. | Demonstrates adaptive switching behavior without claiming physical receiver calibration. | Claiming calibrated hydrophone detection threshold. | Unsubstantiated claim since receiver hardware and hydrophones are not part of transmitter payload. | Assumed fixed $-65\text{ dB}$ relative signal floor. | Actual physical detection threshold depends on transducer, hydrophone, pre-amp, and DSP gain. | None (payload demo). |
+| **Turbidity as Sensitivity Heuristic** | Evaluated turbidity scattering loss strictly as an optional sensitivity heuristic. | Acknowledges that turbidity-to-frequency mapping is uncalibrated in v1. | Hardcoded $50\%$ penalty on composite quality score. | Arbitrary heuristic presented as physical truth. | Assumes Rayleigh-type $f^2$ scattering proportionality coefficient. | Non-Rayleigh particulate sizes (Mie/geometric scattering regimes). | None. |
+| **Dual Confidence Metrics** | Separated `viability_confidence` (margin above threshold) from `selection_confidence` (margin over runner-up). | Avoids confusing "comfortably viable" with "clearly superior to alternatives". | Single scalar score $Q$. | Overloaded environmental quality with winner separation. | Linear scaling over transition zones ($15\text{ dB}$ for viability, $6\text{ dB}$ for selection). | Sharp step thresholds without margin buffer. | Improves explainability of state transitions. |

@@ -86,6 +86,7 @@ function cfg = config_sonar()
     cfg.P_elec_overhead_w = 0.30;   % [ASSUMPTION] Constant digital/analog electronic overhead
     cfg.V_battery_v = 12.0;         % [ASSUMPTION] Primary subsea battery rail (12.0 V)
     cfg.battery_capacity_wh = 99.0; % [ASSUMPTION] Hypothetical 99 Wh pack (transmitter payload load)
+    cfg.viability_threshold_db = -65.0; % [ASSUMPTION] Relative propagation viability threshold (policy parameter, not physical detection limit)
 
     % --------------------------------------------------------------------------
     % Honest Engineering Scope Disclaimer
