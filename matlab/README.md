@@ -17,6 +17,7 @@ This directory contains the official MATLAB-based digital twin simulator for the
 > - Power amplifier (PA) thermal stability or analog settling
 > - Actual hardware current consumption
 > - Receiver hardware or hydrophone acoustic feedback
+> - Experimentally calibrated turbidity-to-frequency mapping
 >
 > The physical hardware demonstration is **transmitter-side only**.
 
@@ -41,15 +42,15 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 | **Target MCU** | — | `STM32G474` | 170 MHz ARM Cortex-M4F with high-speed DAC and DMA controller. |
 | **Waveform Family** | — | `LFM Chirp Only` | Linear frequency modulation with exact phase integration. |
 | **Window Function**| — | `Hann Window` | $w[n] = 0.5(1 - \cos(2\pi n / (N-1)))$; suppresses start/end transients. |
-| **Pulse Duration** | $T_p$ | $2.0\text{ ms}$ | $N_p = F_s \cdot T_p = 8,000\text{ samples}$. |
+| **Pulse Duration** | $T_p$ | $2.0\text{ ms}$ | $N_p = F_s \cdot T_p = 8,000\text{ samples}$ (fixed for v1 runtime). |
 | **Pulse Repetition**| $\text{PRI}$ | $20.0\text{ ms}$ | $50\text{ Hz}$ ping repetition rate; max unambiguous acoustic range $\approx 15\text{ m}$. |
-| **Adaptive Profiles**| — | Exactly $3$ | Profile 1 (MUDDY), Profile 2 (BALANCED), Profile 3 (CLEAR). |
+| **Adaptive Profiles**| — | Exactly $3$ | Profile 1 (`LOW_FREQUENCY`), Profile 2 (`BALANCED`), Profile 3 (`HIGH_FREQUENCY`). |
 
 ### [ADAPTIVE] Runtime Parameters (Controlled by Adaptation Logic)
 | Parameter | Symbol | Range / States | Selection Mechanism |
 |---|---|---|---|
-| **Active Profile** | $\text{Profile\_ID}$ | `1 (MUDDY), 2 (BALANCED), 3 (CLEAR)` | Selected via Channel Quality Score $Q$ with hysteresis and debounce. |
-| **Transmit Amplitude**| $A$ | $0.40, 0.70, 1.00$ | Normalized scaling: $A=1.0$ (poor channel), $A=0.7$ (moderate), $A=0.4$ (good channel). |
+| **Active Profile** | $\text{Profile\_ID}$ | `1 (LOW_FREQUENCY), 2 (BALANCED), 3 (HIGH_FREQUENCY)` | Selected via Channel Quality Score $Q$ with directional Schmitt hysteresis and debounce. |
+| **Transmit Amplitude**| $A$ | $0.40, 0.70, 1.00$ | Normalized scaling: $A=1.0$ (Low Freq), $A=0.7$ (Balanced), $A=0.4$ (High Freq). |
 
 ### [ENVIRONMENT] Environmental Scenario Inputs (Simulation Variables)
 | Parameter | Symbol | Baseline | Role in Simulation |
@@ -65,6 +66,7 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 |---|---|---|---|
 | **Active Transmit Power** | $P_{\text{active}}$ | $5.0\text{ W}$ | Model assumption for PA + DAC + MCU active state. Unmeasured bench estimate. |
 | **Idle Power** | $P_{\text{idle}}$ | $0.045\text{ W}$ | Model assumption for low-power sleep state between pings ($45\text{ mW}$). |
+| **Analog Static Electronics**| $P_{\text{elec}}$ | $0.300\text{ W}$ | Base electronics power when transmitter is enabled. |
 | **Battery Rail Voltage** | $V_{\text{bat}}$ | $12.0\text{ V}$ | Assumed subsea battery bus voltage for current calculation. |
 | **Hypothetical Pack** | $E_{\text{bat}}$ | $99.0\text{ Wh}$ | Standard carry-on compliant battery pack for transmitter-only load model. |
 
@@ -72,7 +74,7 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 | Parameter | Expression | Value | Significance |
 |---|---|---|---|
 | **Sample Count** | $N_p = F_s \cdot T_p$ | $8,000\text{ samples}$ | Fixed buffer length per ping table. |
-| **Buffer Memory** | $N_p \times 2\text{ bytes}$ | $16,000\text{ bytes}$ | $15.62\text{ KB}$ per profile as `uint16_t`. |
+| **Buffer Memory** | $N_p \times 2\text{ bytes}$ | $16,000\text{ bytes}$ | $15.625\text{ KB}$ per profile as `uint16_t`. |
 | **Duty Cycle** | $D = T_p / \text{PRI}$ | $10.0\%$ | $2.0\text{ ms} / 20.0\text{ ms} = 0.10$. |
 | **Average Power** | $P_{\text{avg}} = P_{\text{act}}D + P_{\text{idle}}(1-D)$ | $0.540\text{ W}$ | Nominal average power at $10\%$ duty cycle and $A=1.0$. |
 | **SRAM Load** | $\text{LUT} / 128\text{ KB}$ | $12.5\%$ | Memory footprint in STM32G474 SRAM. |
@@ -80,25 +82,24 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 
 ---
 
-## 2. Three Fixed Transmission Profiles
+## 2. Three Canonical Transmission Profiles
 
 ```
-        Profile 1: MUDDY                  Profile 2: BALANCED                 Profile 3: CLEAR
-        (High Turbidity)                  (Nominal Default)                   (Clear Pelagic)
-  [==== 100 - 220 kHz ====]             [==== 200 - 400 kHz ====]           [==== 350 - 500 kHz ====]
-    fc = 160 kHz, B = 120 kHz             fc = 300 kHz, B = 200 kHz           fc = 425 kHz, B = 150 kHz
-  Penetrates sediment clouds            Balanced range & resolution         Fine range resolution (~5mm)
+      Profile 1: LOW_FREQUENCY          Profile 2: BALANCED             Profile 3: HIGH_FREQUENCY
+      (High Particulate/Scattering)     (Default Operating Mode)        (High Beam Directivity)
+  [======== 100 - 220 kHz ========]   [======== 200 - 400 kHz ========]   [======== 350 - 500 kHz ========]
+     fc = 160 kHz, B = 120 kHz           fc = 300 kHz, B = 200 kHz           fc = 425 kHz, B = 150 kHz
+     Penetrates turbidity plumes        Best Range Resolution (3.75 mm)     Narrow Acoustic Beam Directivity
 ```
 
-1. **Profile 1 (MUDDY / DEGRADED CHANNEL)**:
-   - Sweep: $100.0\text{ kHz} \to 220.0\text{ kHz}$ ($f_c = 160.0\text{ kHz}, B = 120.0\text{ kHz}$)
-   - Purpose: Mitigates acoustic scattering from suspended particulate and sediment plumes.
-2. **Profile 2 (BALANCED / DEFAULT CHANNEL)**:
-   - Sweep: $200.0\text{ kHz} \to 400.0\text{ kHz}$ ($f_c = 300.0\text{ kHz}, B = 200.0\text{ kHz}$)
-   - Purpose: Nominal default operating mode balancing absorption loss and spatial resolution.
-3. **Profile 3 (CLEAR / HIGH-RESOLUTION CHANNEL)**:
-   - Sweep: $350.0\text{ kHz} \to 500.0\text{ kHz}$ ($f_c = 425.0\text{ kHz}, B = 150.0\text{ kHz}$)
-   - Purpose: High-frequency mode providing fine spatial resolution ($\Delta R \approx \frac{c}{2B} \approx 5\text{ mm}$) in clear water.
+### Critical Acoustic Distinction: Range Resolution vs. Beam Directivity
+- **Range Resolution ($\Delta R = \frac{c}{2B}$)**:
+  - Theoretical range resolution is governed strictly by the **sweep bandwidth $B$**, assuming matched-filter compression.
+  - **Profile 2 (`BALANCED`)** possesses the widest bandwidth ($B = 200\text{ kHz}$), yielding an idealized range resolution of **$\Delta R = \frac{1500}{2 \times 200\times 10^3} = 3.75\text{ mm}$**.
+  - **Profile 3 (`HIGH_FREQUENCY`)** has $B = 150\text{ kHz}$, yielding $\Delta R = \frac{1500}{2 \times 150\times 10^3} = 5.00\text{ mm}$.
+- **Beam Directivity ($\theta \propto \frac{\lambda}{D} = \frac{c}{f \cdot D}$)**:
+  - **Profile 3 (`HIGH_FREQUENCY`)** operates at the highest frequencies ($350\text{–}500\text{ kHz}$, $\lambda \approx 3.0\text{–}4.3\text{ mm}$), providing a significantly tighter acoustic beam pattern and reduced angular beamwidth for a fixed physical transducer aperture diameter $D$.
+  - Therefore, `HIGH_FREQUENCY` is selected for **high spatial angular directivity**, not because it has superior range resolution over `BALANCED`.
 
 ---
 
@@ -112,21 +113,22 @@ Environmental Scenario Inputs (Turbidity, Depth, Temp, Salinity, Ambient Noise)
    - High-frequency chemical absorption alpha_chem(f) via Ainslie-McColm (1998)
    - Particulate scattering loss alpha_turb(f, turb)
                                       ↓
-             Deterministic Channel Quality Score Q in [0, 1]
-             Q = 1.0 - (0.50*P_turb + 0.25*P_attn + 0.25*P_noise)
+              Deterministic Channel Quality Score Q in [0, 1]
+              Q = 0.50*q_env + 0.25*q_attn + 0.25*q_noise
                                       ↓
-             Threshold Decision with 10% Schmitt Hysteresis
-         - To enter CLEAR: Q >= 0.75; to leave CLEAR: Q < 0.65
-         - To enter MUDDY: Q <= 0.30; to leave MUDDY: Q > 0.40
-         - Deadbands prevent profile flickering from sensor noise
+            Directional Schmitt-Trigger Hysteresis State Machine
+        - In BALANCED:  Q >= 0.75 -> HIGH_FREQ;  Q <= 0.30 -> LOW_FREQ
+        - In HIGH_FREQ: Q < 0.65  -> BALANCED;   Q <= 0.30 -> LOW_FREQ
+        - In LOW_FREQ:  Q > 0.40  -> BALANCED;   Q >= 0.75 -> HIGH_FREQ
+        - Deadbands [0.30, 0.40] and [0.65, 0.75] prevent profile flickering
                                       ↓
-                  Debounce Persistence Filter (N = 2)
-       Requires condition to persist for 2 consecutive cycles
+                   Debounce Persistence Filter (N = 2)
+       Candidate condition must persist for 2 consecutive evaluations
                                       ↓
-                 Atomic Ping-Boundary Profile Latching
-             Committed strictly at the start of the next PRI
+                  Atomic Ping-Boundary Profile Latching
+        Active profile changes strictly at the start of the next PRI
                                       ↓
-              Synthesized 12-Bit DAC Output (0 to 4095)
+               Synthesized 12-Bit DAC Output (0 to 4095)
 ```
 
 ---
@@ -144,63 +146,72 @@ Open MATLAB, navigate to `d:\AUV sonar\matlab`, and execute:
 % 1. Add matlab directory to path
 addpath(pwd);
 
-% 2. Run master simulation (generates all 10 plots and C headers)
+% 2. Run master simulation (generates all 13 plots, memory budget, power model, headers)
 run_simulation
 ```
 
-### Running the 15-Point Automated Validation Suite
+### Running the 23-Point Automated Validation Suite
 ```matlab
-% Runs all 15 DSP, quantization, hysteresis, debounce, and round-trip tests
+% Runs all 23 DSP, window, quantization, controller, ping-state, and export tests
 run_validation_suite
 ```
 
 ---
 
-## 5. Ten Generated Validation Figures
+## 5. Thirteen Generated Validation Figures (`outputs_matlab/plots/`)
 
-All generated plots are saved to `outputs_matlab/plots/`:
-
-1. **`01_time_domain_waveform.png`**: Full 2.0 ms pulse showing Hann envelope tapering.
+1. **`01_time_domain_waveform.png`**: Time-domain waveforms for all 3 profiles showing smooth Hann envelope tapering.
 2. **`02_zoomed_waveform_section.png`**: Microscopic 80 µs view showing 12-bit DAC stair-step discretization tracking continuous reference.
-3. **`03_instantaneous_frequency.png`**: Exact linear sweep $f(t) = f_0 + k\cdot t$ tracking $200 \to 400\text{ kHz}$.
+3. **`03_instantaneous_frequency.png`**: Linear frequency modulation trajectory tracking $200 \to 400\text{ kHz}$ ($k = 100\text{ MHz/s}$).
 4. **`04_fft_spectrum.png`**: Power spectral density verifying in-band passband and $>50\text{ dB}$ stopband rejection.
 5. **`05_spectrogram.png`**: STFT spectrogram showing straight time-frequency energy ridge ($100\text{ MHz/s}$ slope).
-6. **`06_window_comparison.png`**: Overlay comparing Hann windowed pulse against rectangular pulse, proving suppression of sidelobe splatter.
-7. **`07_quantization_error.png`**: Quantization error residuals strictly bounded within $[-0.5, +0.5]\text{ LSB}$.
-8. **`08_dac_code_histogram.png`**: 12-bit code distribution verifying midscale centering at code $2048$.
-9. **`09_profile_comparison.png`**: Side-by-side spectral overlay of Muddy, Balanced, and Clear bands.
-10. **`10_dynamic_simulation_timeline.png`**: 150-ping ($3.0\text{ s}$) mission timeline showing noisy turbidity input, quality score $Q$, raw candidate vs latched active profile, hysteresis stability, and average power throttling.
+6. **`06_dac_quantization_error.png`**: Quantization error residuals strictly bounded within $[-0.5, +0.5]\text{ LSB}$.
+7. **`07_dac_code_histogram.png`**: 12-bit code distribution verifying midscale centering at code $2048$.
+8. **`08_profile_comparison.png`**: Spectral overlay of all three bands (`LOW_FREQUENCY`, `BALANCED`, `HIGH_FREQUENCY`).
+9. **`09_channel_quality_timeline.png`**: Predicted Channel Quality Score $Q(t)$ plotted against directional hysteresis thresholds.
+10. **`10_candidate_profile_timeline.png`**: Raw candidate profile timeline driven by instantaneous channel score.
+11. **`11_active_profile_timeline.png`**: Committed active profile timeline showing rock-solid stability after debounce.
+12. **`12_hysteresis_debounce_demo.png`**: Detailed view demonstrating deadband hysteresis and $N=2$ debounce filtering during a sediment plume event.
+13. **`13_estimated_power_summary.png`**: Transmitter payload average power timeline across mission and pulse duration sensitivity analysis ($1\text{ ms}, 2\text{ ms}, 3\text{ ms}$).
 
 ---
 
-## 6. Fifteen Automated Engineering Checks (`run_validation_suite.m`)
+## 6. Twenty-Three Automated Engineering Checks (`run_validation_suite.m`)
 
 | # | Validation Check | Target Specification | Measured Result | Status |
 |---|---|---|---|---|
 | **01** | **Sample Count** | $N_p = 8,000\text{ samples}$ | Exactly $8,000$ | **PASSED** |
 | **02** | **Pulse Duration** | $T_p = 2.0\text{ ms}$ | $2.000\text{ ms}$ | **PASSED** |
-| **03** | **DAC Range** | $0 \le \text{code} \le 4095$ | No overflow/underflow | **PASSED** |
-| **04** | **Midscale Correctness**| $\text{code} = 2048$ at $0\text{ V AC}$ | Exactly $2048$ | **PASSED** |
-| **05** | **Hann Endpoints** | $w[0] = 0, w[N-1] = 0$ | $< 10^{-6}$ | **PASSED** |
-| **06** | **Chirp Slope** | $k = 100.0\text{ MHz/s}$ ($\text{err} < 0.1\%$) | Error $= 0.0000\%$ | **PASSED** |
-| **07** | **Start Frequency** | $f_0 = 200.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0062\%$ | **PASSED** |
-| **08** | **End Frequency** | $f_1 = 400.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0031\%$ | **PASSED** |
-| **09** | **FFT Band-Energy** | $\ge 99.0\%$ in-band | $100.0000\%$ in-band | **PASSED** |
-| **10** | **Hysteresis Stability**| Suppresses deadband noise | Zero flicker in deadband | **PASSED** |
-| **11** | **Debounce Persistence**| $N=2$ cycles required | 1-cycle spike rejected | **PASSED** |
-| **12** | **Ping-Boundary Latch** | Changes occur at PRI ($20\text{ ms}$) | Atomic PRI update | **PASSED** |
-| **13** | **Power Model** | $P_{\text{avg}} = P_{\text{act}}D + P_{\text{idle}}(1-D)$| Exact analytical match | **PASSED** |
-| **14** | **C Header Integrity** | Valid header guards and macros | Valid ANSI C generated | **PASSED** |
-| **15** | **Bit-Exact Round-Trip**| C parsed array == MATLAB array | 8,000 / 8,000 matched | **PASSED** |
+| **03** | **Chirp Slope** | $k = 100.0\text{ MHz/s}$ ($\text{err} < 0.1\%$) | Error $= 0.0000\%$ | **PASSED** |
+| **04** | **Start Frequency** | $f_0 = 200.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0062\%$ | **PASSED** |
+| **05** | **End Frequency** | $f_1 = 400.0\text{ kHz}$ ($\text{err} < 0.1\%$) | Error $= 0.0031\%$ | **PASSED** |
+| **06** | **No NaN Values** | Waveform contains no NaN | 0 NaN elements | **PASSED** |
+| **07** | **No Inf Values** | Waveform contains no Inf | 0 Inf elements | **PASSED** |
+| **08** | **Hann Window Length** | $N = 8,000\text{ samples}$ | Exactly $8,000$ | **PASSED** |
+| **09** | **Window Application**| $w[0] = 0, w[N-1] = 0$, $x[0]=0, x[N-1]=0$ | $< 10^{-6}$ | **PASSED** |
+| **10** | **DAC Code Range** | $0 \le \text{code} \le 4095$ | No overflow/underflow | **PASSED** |
+| **11** | **DAC Data Type** | `uint16` for DMA peripheral | `uint16` | **PASSED** |
+| **12** | **Midscale Correctness**| $\text{code} = 2048$ at $0\text{ V AC}$ swing | Exactly $2048$ | **PASSED** |
+| **13** | **Quantization Error** | $\text{Max} \le 0.5\text{ LSB}, \text{SQNR} \ge 68\text{ dB}$ | $0.500\text{ LSB}, 69.67\text{ dB}$ | **PASSED** |
+| **14** | **Candidate Selection**| $Q=0.20 \to \text{LOW}, Q=0.85 \to \text{HIGH}$| Exact state mapping | **PASSED** |
+| **15** | **Hysteresis Stability**| Suppresses noise inside deadband | Zero flicker in deadband | **PASSED** |
+| **16** | **Single Transient** | 1-cycle spike does not switch profile | Retained current profile | **PASSED** |
+| **17** | **Two Consecutive** | 2 consecutive cycles commit change | Profile committed | **PASSED** |
+| **18** | **Candidate Reset** | Counter resets when input reverts | Counter reset to 0 | **PASSED** |
+| **19** | **Active Frozen in Ping**| Active profile unchanged during transmit | Strictly latched | **PASSED** |
+| **20** | **Pending Activates at PRI**| Pending switches at PRI boundary | Atomic PRI boundary update | **PASSED** |
+| **21** | **C Headers Generated**| All 4 headers exist with valid guards | All 4 files verified | **PASSED** |
+| **22** | **Sample Metadata** | Sample count and byte size macros match | Exact macro match | **PASSED** |
+| **23** | **Bit-Exact Round-Trip**| Parsed C table == Synthesized table | 8,000 / 8,000 bit-exact | **PASSED** |
 
 ---
 
 ## 7. Firmware C Header Export
 
 Firmware-ready prototype headers aligned for DMA burst transfers are exported to `outputs_matlab/headers/`:
-- `chirp_muddy.h` ($100\text{–}220\text{ kHz}$, 8,000 samples, 16 KB)
+- `chirp_low_frequency.h` ($100\text{–}220\text{ kHz}$, 8,000 samples, 16 KB)
 - `chirp_balanced.h` ($200\text{–}400\text{ kHz}$, 8,000 samples, 16 KB)
-- `chirp_clear.h` ($350\text{–}500\text{ kHz}$, 8,000 samples, 16 KB)
+- `chirp_high_frequency.h` ($350\text{–}500\text{ kHz}$, 8,000 samples, 16 KB)
 - `sonar_profiles.h` (Master registry with `SonarProfileDescriptor_t` lookup structs)
 
 ---

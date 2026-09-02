@@ -6,6 +6,7 @@
  * @section METADATA
  * - Profile Mode:           BALANCED
  * - DAC Sample Rate:         4,000,000 Hz (4.0 MSPS)
+ * - DAC Resolution:          12-bit unsigned (0 to 4095)
  * - Start Frequency (f_0):   200,000.0 Hz
  * - End Frequency (f_1):     400,000.0 Hz
  * - Center Frequency (f_c):  300,000.0 Hz
@@ -13,11 +14,11 @@
  * - Pulse Duration:          2.000 ms
  * - Total Samples:           8000
  * - Memory Footprint:        16,000 bytes (15.62 KB)
- * - DAC Bit Depth:           12-bit unsigned (0 to 4095)
  * - Window Function:         Hann
  * - Simulated SQNR:          69.67 dB
  *
- * @note PROTOTYPE FIRMWARE LUT: Requires physical verification on STM32G4 bench hardware.
+ * @note Generated simulation prototype waveform. Requires hardware validation.
+ *       At 4.0 MSPS, external analog buffering and high-speed DAC mode must be confirmed on scope.
  */
 
 #ifndef CHIRP_BALANCED_H_
@@ -37,12 +38,14 @@ extern "C" {
   #endif
 #endif
 
-#define CHIRP_BALANCED_LUT_SAMPLE_RATE_HZ  (4000000UL)
-#define CHIRP_BALANCED_LUT_F_START_HZ      (200000UL)
-#define CHIRP_BALANCED_LUT_F_END_HZ        (400000UL)
-#define CHIRP_BALANCED_LUT_DURATION_US     (2000UL)
-#define CHIRP_BALANCED_LUT_SAMPLE_COUNT    (8000U)
-#define CHIRP_BALANCED_LUT_SIZE_BYTES      (16000U)
+#define CHIRP_BALANCED_LUT_SAMPLE_RATE_HZ     (4000000UL)
+#define CHIRP_BALANCED_LUT_DAC_BITS           (12U)
+#define CHIRP_BALANCED_LUT_F_START_HZ         (200000UL)
+#define CHIRP_BALANCED_LUT_F_END_HZ           (400000UL)
+#define CHIRP_BALANCED_LUT_BANDWIDTH_HZ       (200000UL)
+#define CHIRP_BALANCED_LUT_DURATION_US        (2000UL)
+#define CHIRP_BALANCED_LUT_SAMPLE_COUNT       (8000U)
+#define CHIRP_BALANCED_LUT_SIZE_BYTES         (16000U)
 
 DMA_ALIGN const uint16_t CHIRP_BALANCED_LUT[8000] = {
     0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x0800,

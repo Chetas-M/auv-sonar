@@ -1,6 +1,7 @@
 % ==============================================================================
 % File: generate_lfm_chirp.m
 % Description: Synthesizes continuous-phase LFM chirp with Hann windowing.
+% Validates that sample count, endpoints, and values contain no NaN or Inf.
 % ==============================================================================
 
 function [wf, diagnostics] = generate_lfm_chirp(f_start_hz, f_end_hz, duration_s, Fs, amplitude)
@@ -23,7 +24,7 @@ function [wf, diagnostics] = generate_lfm_chirp(f_start_hz, f_end_hz, duration_s
     % phi(t) = 2*pi * integral_0^t (f_0 + k*tau) dtau = 2*pi * (f_0*t + 0.5*k*t^2)
     phi = 2.0 * pi * (f_start_hz .* t + 0.5 * k .* (t .^ 2));
 
-    % Raw carrier sinusoid
+    % Raw continuous-phase carrier sinusoid
     raw_carrier = cos(phi);
 
     % 4. Hann window implementation (standard definition)
@@ -33,6 +34,11 @@ function [wf, diagnostics] = generate_lfm_chirp(f_start_hz, f_end_hz, duration_s
     % 5. Windowed and amplitude-scaled ideal signal
     x_windowed = amplitude * raw_carrier .* w;
 
+    % Validation checks
+    assert(~any(isnan(x_windowed)), 'Generated waveform contains NaN values');
+    assert(~any(isinf(x_windowed)), 'Generated waveform contains Inf values');
+    assert(length(x_windowed) == Np, 'Generated waveform length mismatch');
+
     % 6. Diagnostics & Verification metrics
     diagnostics = struct();
     diagnostics.Np = Np;
@@ -41,6 +47,8 @@ function [wf, diagnostics] = generate_lfm_chirp(f_start_hz, f_end_hz, duration_s
     diagnostics.window_endpoint_start = w(1);
     diagnostics.window_endpoint_end = w(end);
     diagnostics.peak_amplitude = max(abs(x_windowed));
+    diagnostics.has_nan = any(isnan(x_windowed));
+    diagnostics.has_inf = any(isinf(x_windowed));
 
     % Estimate numerical instantaneous frequency via phase diff
     dphi = diff(phi);
@@ -61,5 +69,6 @@ function [wf, diagnostics] = generate_lfm_chirp(f_start_hz, f_end_hz, duration_s
     wf.amplitude = amplitude;
     wf.Np = Np;
     wf.phi = phi;
+    wf.chirp_slope_hz_s = k;
     wf.inst_freq_hz = [inst_freq_hz; inst_freq_hz(end)]; % Pad last sample to match length
 end

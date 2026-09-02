@@ -2,6 +2,7 @@
 % File: export_c_headers.m
 % Description: Exports 12-bit DAC lookup tables as firmware-ready prototype C
 % header files for STM32G4 microcontroller bring-up.
+% Profiles: chirp_low_frequency.h, chirp_balanced.h, chirp_high_frequency.h, sonar_profiles.h.
 % ==============================================================================
 
 function export_c_headers(output_dir)
@@ -50,6 +51,7 @@ function write_single_header(filepath, profile, wf, dac_codes, quant_metrics, cf
     fprintf(fid, ' * @section METADATA\n');
     fprintf(fid, ' * - Profile Mode:           %s\n', profile.name);
     fprintf(fid, ' * - DAC Sample Rate:         %u Hz (4.0 MSPS)\n', uint32(cfg.Fs));
+    fprintf(fid, ' * - DAC Resolution:          12-bit unsigned (0 to 4095)\n');
     fprintf(fid, ' * - Start Frequency (f_0):   %.1f Hz\n', profile.f_start_hz);
     fprintf(fid, ' * - End Frequency (f_1):     %.1f Hz\n', profile.f_end_hz);
     fprintf(fid, ' * - Center Frequency (f_c):  %.1f Hz\n', profile.f_center_hz);
@@ -57,11 +59,10 @@ function write_single_header(filepath, profile, wf, dac_codes, quant_metrics, cf
     fprintf(fid, ' * - Pulse Duration:          %.3f ms\n', profile.duration_s * 1000.0);
     fprintf(fid, ' * - Total Samples:           %u\n', uint32(sample_count));
     fprintf(fid, ' * - Memory Footprint:        %u bytes (%.2f KB)\n', uint32(byte_count), byte_count / 1024.0);
-    fprintf(fid, ' * - DAC Bit Depth:           12-bit unsigned (0 to 4095)\n');
     fprintf(fid, ' * - Window Function:         Hann\n');
     fprintf(fid, ' * - Simulated SQNR:          %.2f dB\n', quant_metrics.sqnr_db);
     fprintf(fid, ' *\n');
-    fprintf(fid, ' * @note PROTOTYPE FIRMWARE LUT: Requires physical verification on STM32G4 bench hardware.\n');
+    fprintf(fid, ' * @note Generated simulation prototype waveform. Requires hardware validation.\n');
     fprintf(fid, ' *       At 4.0 MSPS, external analog buffering and high-speed DAC mode must be confirmed on scope.\n');
     fprintf(fid, ' */\n\n');
 
@@ -79,12 +80,14 @@ function write_single_header(filepath, profile, wf, dac_codes, quant_metrics, cf
     fprintf(fid, '  #endif\n');
     fprintf(fid, '#endif\n\n');
 
-    fprintf(fid, '#define %s_SAMPLE_RATE_HZ  (%uUL)\n', profile.lut_name, uint32(cfg.Fs));
-    fprintf(fid, '#define %s_F_START_HZ      (%uUL)\n', profile.lut_name, uint32(profile.f_start_hz));
-    fprintf(fid, '#define %s_F_END_HZ        (%uUL)\n', profile.lut_name, uint32(profile.f_end_hz));
-    fprintf(fid, '#define %s_DURATION_US     (%uUL)\n', profile.lut_name, uint32(profile.duration_s * 1e6));
-    fprintf(fid, '#define %s_SAMPLE_COUNT    (%uU)\n', profile.lut_name, uint32(sample_count));
-    fprintf(fid, '#define %s_SIZE_BYTES      (%uU)\n\n', profile.lut_name, uint32(byte_count));
+    fprintf(fid, '#define %s_SAMPLE_RATE_HZ     (%uUL)\n', profile.lut_name, uint32(cfg.Fs));
+    fprintf(fid, '#define %s_DAC_BITS           (12U)\n', profile.lut_name);
+    fprintf(fid, '#define %s_F_START_HZ         (%uUL)\n', profile.lut_name, uint32(profile.f_start_hz));
+    fprintf(fid, '#define %s_F_END_HZ           (%uUL)\n', profile.lut_name, uint32(profile.f_end_hz));
+    fprintf(fid, '#define %s_BANDWIDTH_HZ       (%uUL)\n', profile.lut_name, uint32(profile.bandwidth_hz));
+    fprintf(fid, '#define %s_DURATION_US        (%uUL)\n', profile.lut_name, uint32(profile.duration_s * 1e6));
+    fprintf(fid, '#define %s_SAMPLE_COUNT       (%uU)\n', profile.lut_name, uint32(sample_count));
+    fprintf(fid, '#define %s_SIZE_BYTES         (%uU)\n\n', profile.lut_name, uint32(byte_count));
 
     fprintf(fid, 'DMA_ALIGN const uint16_t %s[%u] = {\n', profile.lut_name, uint32(sample_count));
 
@@ -118,7 +121,7 @@ function write_master_header(filepath, profiles)
     fprintf(fid, '/**\n');
     fprintf(fid, ' * @file    sonar_profiles.h\n');
     fprintf(fid, ' * @brief   Master header registering all adaptive chirp lookup tables for STM32G4.\n');
-    fprintf(fid, ' * @note    PROTOTYPE HEADER: For firmware bring-up and descriptor lookup.\n');
+    fprintf(fid, ' * @note    Generated simulation prototype waveform. Requires hardware validation.\n');
     fprintf(fid, ' */\n\n');
 
     fprintf(fid, '#ifndef SONAR_PROFILES_H_\n');
@@ -131,9 +134,9 @@ function write_master_header(filepath, profiles)
     fprintf(fid, '\n#ifdef __cplusplus\nextern "C" {\n#endif\n\n');
 
     fprintf(fid, 'typedef enum {\n');
-    fprintf(fid, '    SONAR_PROFILE_MUDDY = 0,     /**< 100-220 kHz for turbid/degraded channel */\n');
-    fprintf(fid, '    SONAR_PROFILE_BALANCED = 1,  /**< 200-400 kHz nominal default */\n');
-    fprintf(fid, '    SONAR_PROFILE_CLEAR = 2,     /**< 350-500 kHz for high resolution clear water */\n');
+    fprintf(fid, '    SONAR_PROFILE_LOW_FREQUENCY = 0, /**< 100-220 kHz for degraded/scattering channel */\n');
+    fprintf(fid, '    SONAR_PROFILE_BALANCED = 1,      /**< 200-400 kHz nominal default (best range resolution) */\n');
+    fprintf(fid, '    SONAR_PROFILE_HIGH_FREQUENCY = 2,/**< 350-500 kHz for high frequency beam directivity */\n');
     fprintf(fid, '    SONAR_PROFILE_COUNT\n');
     fprintf(fid, '} SonarProfileId_t;\n\n');
 

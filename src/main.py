@@ -24,6 +24,7 @@ from src.config import (
     MCU_FLASH_TOTAL_BYTES,
 )
 from src.profiles import (
+    ProfileType,
     TurbidityProfileType,
     BandProfile,
     BAND_PROFILES,
@@ -100,9 +101,9 @@ def run_full_pipeline(output_base_dir: str = "outputs") -> None:
     # 3. Export C Headers
     print("\n[*] Phase 3: Exporting Firmware-Ready Prototype C Header Tables for STM32...")
     export_map = {
-        TurbidityProfileType.MUDDY: ("chirp_muddy.h", "CHIRP_MUDDY_LUT"),
-        TurbidityProfileType.BALANCED: ("chirp_balanced.h", "CHIRP_BALANCED_LUT"),
-        TurbidityProfileType.CLEAR: ("chirp_clear.h", "CHIRP_CLEAR_LUT"),
+        ProfileType.LOW_FREQUENCY: ("chirp_low_frequency.h", "CHIRP_LOW_FREQUENCY_LUT"),
+        ProfileType.BALANCED: ("chirp_balanced.h", "CHIRP_BALANCED_LUT"),
+        ProfileType.HIGH_FREQUENCY: ("chirp_high_frequency.h", "CHIRP_HIGH_FREQUENCY_LUT"),
     }
     for p_type, (filename, array_name) in export_map.items():
         file_path = os.path.join(headers_dir, filename)

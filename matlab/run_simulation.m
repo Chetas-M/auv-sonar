@@ -3,8 +3,8 @@
 % "Low-Power, Real-Time Adaptive Software-Defined Sonar Transmitter Payload for AUVs"
 %
 % File: run_simulation.m
-% Description: Complete end-to-end MATLAB simulation, validation suite,
-% 10 engineering validation plots, embedded memory analysis, and C header export.
+% Description: Complete end-to-end MATLAB simulation, 23-point validation suite,
+% 13 engineering validation plots, embedded memory analysis, and C header export.
 % ==============================================================================
 
 function run_simulation()
@@ -42,7 +42,7 @@ function run_simulation()
         q_metrics_all{i} = q_m;
 
         mem_kb = (wf.Np * cfg.bytes_per_sample) / 1024.0;
-        fprintf('  -> %-8s: %5.1f to %5.1f kHz | N = %d (%4.1f KB) | SQNR: %5.2f dB\n', ...
+        fprintf('  -> %-14s: %5.1f to %5.1f kHz | N = %d (%4.1f KB) | SQNR: %5.2f dB\n', ...
                 p.name, p.f_start_hz/1e3, p.f_end_hz/1e3, wf.Np, mem_kb, q_m.sqnr_db);
     end
 
@@ -72,12 +72,12 @@ function run_simulation()
     fprintf('\n[*] Phase 3: Evaluating Duty-Cycle Power Model...\n');
     fprintf('  NOTE: Estimates for modeled transmitter payload alone against hypothetical 99 Wh pack.\n');
     fprintf('  --------------------------------------------------------------------------\n');
-    fprintf('  Profile     Duration    PRI      Duty%%     Avg Power   Avg Current   TX-Only 99Wh\n');
+    fprintf('  Profile          Duration    PRI      Duty%%     Avg Power   Avg Current   TX-Only 99Wh\n');
     fprintf('  --------------------------------------------------------------------------\n');
     for i = 1:length(profiles)
         p = profiles(i);
         pm = power_model(p.duration_s, 1.0, cfg);
-        fprintf('  %-10s %4.1f ms    %4.1f ms  %5.1f%%    %6.3f W     %6.1f mA       %6.1f hrs\n', ...
+        fprintf('  %-16s %4.1f ms    %4.1f ms  %5.1f%%    %6.3f W     %6.1f mA       %6.1f hrs\n', ...
                 p.name, pm.pulse_duration_ms, pm.pri_ms, pm.duty_cycle_pct, ...
                 pm.average_power_w, pm.average_current_ma, pm.transmitter_alone_endurance_hours);
     end
@@ -90,22 +90,29 @@ function run_simulation()
     export_c_headers(headers_dir);
 
     % --------------------------------------------------------------------------
-    % Phase 5: Generating 10 Required Analysis Plots
+    % Phase 5: Generating 13 Required Analysis Plots
     % --------------------------------------------------------------------------
-    fprintf('\n[*] Phase 5: Generating 10 Required Engineering Validation Figures...\n');
+    fprintf('\n[*] Phase 5: Generating 13 Required Engineering Validation Figures...\n');
     p_bal = profiles(2);
     wf_bal = waveforms{2};
     dac_bal = dac_arrays{2};
     qm_bal = q_metrics_all{2};
+    n_fft = wf_bal.Np * 4;
+    freqs_khz = (0:(n_fft/2)) * (cfg.Fs / n_fft) / 1e3;
 
-    % Figure 1: Time-Domain Waveform
-    fig1 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
-    plot(wf_bal.t * 1000, wf_bal.signal, 'b', 'LineWidth', 1.0); hold on;
-    plot(wf_bal.t * 1000, wf_bal.window, 'r--', 'LineWidth', 1.5);
-    plot(wf_bal.t * 1000, -wf_bal.window, 'r--', 'LineWidth', 1.5);
-    grid on; xlabel('Time (ms)'); ylabel('Normalized Amplitude');
-    title('Plot 1: Balanced Profile Time-Domain Pulse with Hann Window Taper');
-    legend('LFM Chirp Signal', 'Hann Envelope', 'Location', 'northeast');
+    % Figure 1: Time-Domain Waveform for each profile (3 panels)
+    fig1 = figure('Visible', 'off', 'Position', [100, 100, 1000, 800]);
+    colors = {[0.85, 0.35, 0.0], [0.15, 0.50, 0.80], [0.15, 0.70, 0.35]};
+    for i = 1:length(profiles)
+        subplot(3, 1, i);
+        plot(waveforms{i}.t * 1000, waveforms{i}.signal, 'Color', colors{i}, 'LineWidth', 0.9); hold on;
+        plot(waveforms{i}.t * 1000, waveforms{i}.window, 'r--', 'LineWidth', 1.0);
+        plot(waveforms{i}.t * 1000, -waveforms{i}.window, 'r--', 'LineWidth', 1.0);
+        grid on; ylabel('Amplitude');
+        title(sprintf('Profile %d: %s (%.0f - %.0f kHz, B = %.0f kHz)', ...
+              profiles(i).id, profiles(i).name, profiles(i).f_start_hz/1e3, profiles(i).f_end_hz/1e3, profiles(i).bandwidth_hz/1e3));
+    end
+    xlabel('Time (ms)');
     saveas(fig1, fullfile(plots_dir, '01_time_domain_waveform.png'));
     close(fig1);
     fprintf('  [+] Plot 1 saved: 01_time_domain_waveform.png\n');
@@ -137,9 +144,7 @@ function run_simulation()
 
     % Figure 4: FFT Spectrum
     fig4 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
-    n_fft = wf_bal.Np * 4;
     X_fft = fft(wf_bal.signal, n_fft);
-    freqs_khz = (0:(n_fft/2)) * (cfg.Fs / n_fft) / 1e3;
     mag_db = 20 * log10(abs(X_fft(1:(n_fft/2 + 1))) / max(abs(X_fft)));
     plot(freqs_khz, mag_db, 'g', 'LineWidth', 1.2); hold on;
     xline(p_bal.f_start_hz / 1e3, 'r--', 'f_0 = 200 kHz');
@@ -158,51 +163,36 @@ function run_simulation()
     axis xy; axis tight; view(0, 90); colormap('hot'); colorbar;
     ylim([0, 600]); caxis([-50, 0]);
     xlabel('Time (ms)'); ylabel('Frequency (kHz)');
-    title('Plot 5: STFT Spectrogram (Time-Frequency Energy Ridge)');
+    title('Plot 5: STFT Spectrogram (Linear Time-Frequency Energy Ridge)');
     saveas(fig5, fullfile(plots_dir, '05_spectrogram.png'));
     close(fig5);
     fprintf('  [+] Plot 5 saved: 05_spectrogram.png\n');
 
-    % Figure 6: Window Comparison (Hann vs Rectangular)
+    % Figure 6: Quantization Error Time Series
     fig6 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
-    rect_signal = cos(wf_bal.phi);
-    X_rect = fft(rect_signal, n_fft);
-    mag_rect_db = 20 * log10(abs(X_rect(1:(n_fft/2 + 1))) / max(abs(X_rect)));
-    plot(freqs_khz, mag_rect_db, 'r:', 'LineWidth', 1.0); hold on;
-    plot(freqs_khz, mag_db, 'b-', 'LineWidth', 1.2);
-    xlim([50, 600]); ylim([-60, 5]); grid on;
-    xlabel('Frequency (kHz)'); ylabel('Magnitude (dB)');
-    title('Plot 6: Window Comparison (Hann Window vs Rectangular Sidelobe Splatter)');
-    legend('Rectangular (Severe Sidelobes)', 'Hann Tapered (>50 dB Rejection)', 'Location', 'northeast');
-    saveas(fig6, fullfile(plots_dir, '06_window_comparison.png'));
-    close(fig6);
-    fprintf('  [+] Plot 6 saved: 06_window_comparison.png\n');
-
-    % Figure 7: Quantization Error Time Series
-    fig7 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
     plot(wf_bal.t(1:1000) * 1000, qm_bal.quant_error_lsb(1:1000), 'Color', [0.85, 0.55, 0.1]); hold on;
     yline(0.5, 'r--', '+0.5 LSB Limit');
     yline(-0.5, 'r--', '-0.5 LSB Limit');
     ylim([-0.7, 0.7]); grid on;
     xlabel('Time (ms)'); ylabel('Quantization Error (LSB)');
-    title(sprintf('Plot 7: 12-Bit DAC Quantization Error Residuals (Max Error = %.3f LSB)', qm_bal.max_error_lsb));
-    saveas(fig7, fullfile(plots_dir, '07_quantization_error.png'));
-    close(fig7);
-    fprintf('  [+] Plot 7 saved: 07_quantization_error.png\n');
+    title(sprintf('Plot 6: 12-Bit DAC Quantization Error (Max = %.3f LSB, RMS = %.3f LSB)', ...
+                  qm_bal.max_error_lsb, qm_bal.rms_error_lsb));
+    saveas(fig6, fullfile(plots_dir, '06_dac_quantization_error.png'));
+    close(fig6);
+    fprintf('  [+] Plot 6 saved: 06_dac_quantization_error.png\n');
 
-    % Figure 8: DAC Code Distribution Histogram
-    fig8 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
+    % Figure 7: DAC Code Distribution Histogram
+    fig7 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
     histogram(double(dac_bal), 64, 'FaceColor', [0.2, 0.6, 0.8], 'EdgeColor', 'k');
     grid on; xlabel('12-bit DAC Integer Code'); ylabel('Sample Count');
-    title(sprintf('Plot 8: DAC Output Code Distribution (Mean = %.1f, Midscale = %d)', ...
+    title(sprintf('Plot 7: DAC Output Code Distribution (Mean = %.1f, Midscale = %d)', ...
                   mean(double(dac_bal)), cfg.DAC_midscale));
-    saveas(fig8, fullfile(plots_dir, '08_dac_code_histogram.png'));
-    close(fig8);
-    fprintf('  [+] Plot 8 saved: 08_dac_code_histogram.png\n');
+    saveas(fig7, fullfile(plots_dir, '07_dac_code_histogram.png'));
+    close(fig7);
+    fprintf('  [+] Plot 7 saved: 07_dac_code_histogram.png\n');
 
-    % Figure 9: Cross-Profile Spectral Overlay
-    fig9 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
-    colors = {[0.9, 0.4, 0.1], [0.1, 0.6, 0.9], [0.1, 0.8, 0.3]};
+    % Figure 8: Profile Comparison
+    fig8 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
     for i = 1:length(profiles)
         p = profiles(i);
         X = fft(waveforms{i}.signal, n_fft);
@@ -211,24 +201,18 @@ function run_simulation()
     end
     xlim([50, 600]); ylim([-60, 5]); grid on;
     xlabel('Frequency (kHz)'); ylabel('Normalized Magnitude (dB)');
-    title('Plot 9: Transmission Profile Comparison (Muddy vs Balanced vs Clear)');
-    legend('Muddy (100-220 kHz)', 'Balanced (200-400 kHz)', 'Clear (350-500 kHz)', 'Location', 'northeast');
-    saveas(fig9, fullfile(plots_dir, '09_profile_comparison.png'));
-    close(fig9);
-    fprintf('  [+] Plot 9 saved: 09_profile_comparison.png\n');
+    title('Plot 8: Transmission Profile Spectral Comparison (Low Freq vs Balanced vs High Freq)');
+    legend('LOW\_FREQUENCY (100-220 kHz)', 'BALANCED (200-400 kHz)', 'HIGH\_FREQUENCY (350-500 kHz)', 'Location', 'northeast');
+    saveas(fig8, fullfile(plots_dir, '08_profile_comparison.png'));
+    close(fig8);
+    fprintf('  [+] Plot 8 saved: 08_profile_comparison.png\n');
 
-    % Figure 10: Dynamic Simulation Timeline (150 Pings with Hysteresis & Debounce)
-    fig10 = figure('Visible', 'off', 'Position', [100, 100, 1000, 800]);
+    % Dynamic Simulation Setup (150 Pings)
     num_pings = 150;
     t_axis = (0:(num_pings - 1)) * cfg.PRI_s;
-
-    % Dynamic environment scenario: Clear -> Muddy sediment plume -> Recovery
-    turb_traj = 15.0 + 75.0 ./ (1.0 + exp(-10.0 * (t_axis - 1.2))) - ...
-                45.0 ./ (1.0 + exp(-10.0 * (t_axis - 2.2)));
-    % Add simulated sensor noise to test hysteresis stability
+    turb_traj = 15.0 + 75.0 ./ (1.0 + exp(-10.0 * (t_axis - 1.2))) - 45.0 ./ (1.0 + exp(-10.0 * (t_axis - 2.2)));
     rng(42);
-    noise_perturb = 3.0 * randn(1, num_pings);
-    turb_traj = max(0, min(100, turb_traj + noise_perturb));
+    turb_traj = max(0, min(100, turb_traj + 3.0 * randn(1, num_pings)));
 
     Q_hist = zeros(num_pings, 1);
     cand_hist = zeros(num_pings, 1);
@@ -236,16 +220,15 @@ function run_simulation()
     amp_hist = zeros(num_pings, 1);
     power_hist = zeros(num_pings, 1);
 
-    % Controller state tracking
-    ctrl_state = struct('active_profile_id', 2, 'candidate_profile_id', 2, ...
-                        'debounce_counter', 0, 'amplitude', 0.7, 'ping_index', 0, 'time_s', 0.0);
+    ctrl_state = struct('active_profile_id', 2, 'pending_profile_id', 2, ...
+                        'candidate_profile_id', 2, 'debounce_counter', 0, ...
+                        'amplitude', 0.70, 'ping_index', 0, 'time_s', 0.0);
 
     for p_idx = 1:num_pings
         env = struct('depth_m', 50, 'temperature_c', 20, 'salinity_psu', 35, ...
                      'turbidity', turb_traj(p_idx), 'ambient_noise_db', 55.0);
         [Q_val, ~] = channel_model(env, cfg);
         [ctrl_state, dec_log] = adaptive_controller(Q_val, ctrl_state, cfg);
-
         pm = power_model(cfg.Tp_s, ctrl_state.amplitude, cfg);
 
         Q_hist(p_idx) = Q_val;
@@ -255,43 +238,86 @@ function run_simulation()
         power_hist(p_idx) = pm.average_power_w;
     end
 
-    subplot(4, 1, 1);
-    plot(t_axis, turb_traj, 'Color', [0.85, 0.45, 0.1], 'LineWidth', 1.2);
-    grid on; ylabel('Turbidity (NTU)');
-    title('Plot 10: Dynamic Simulation Timeline (150 Pings, Atomic PRI = 20 ms Switching)');
+    % Figure 9: Channel Quality Timeline
+    fig9 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
+    plot(t_axis, Q_hist, 'b-', 'LineWidth', 1.5); hold on;
+    yline(cfg.thresh_bal_to_high, 'g--', 'Promote to High (0.75)');
+    yline(cfg.thresh_high_to_bal, 'g:', 'Demote from High (0.65)');
+    yline(cfg.thresh_low_to_bal, 'r:', 'Promote from Low (0.40)');
+    yline(cfg.thresh_bal_to_low, 'r--', 'Demote to Low (0.30)');
+    ylim([0, 1]); grid on; xlabel('Mission Time (seconds)'); ylabel('Quality Score Q');
+    title('Plot 9: Predicted Channel Quality Score Timeline with Directional Thresholds');
+    legend('Score Q', 'Location', 'lower right');
+    saveas(fig9, fullfile(plots_dir, '09_channel_quality_timeline.png'));
+    close(fig9);
+    fprintf('  [+] Plot 9 saved: 09_channel_quality_timeline.png\n');
 
-    subplot(4, 1, 2);
-    plot(t_axis, Q_hist, 'b-', 'LineWidth', 1.2); hold on;
-    yline(0.70, 'g--', 'Clear Thresh (0.70)');
-    yline(0.35, 'r--', 'Muddy Thresh (0.35)');
-    ylim([0, 1]); grid on; ylabel('Quality Score Q');
-    legend('Channel Score Q', 'Location', 'southeast');
-
-    subplot(4, 1, 3);
-    stairs(t_axis, cand_hist, 'm:', 'LineWidth', 1.0); hold on;
-    stairs(t_axis, active_hist, 'k-', 'LineWidth', 1.8);
-    yticks([1, 2, 3]); yticklabels({'MUDDY', 'BALANCED', 'CLEAR'});
-    ylim([0.5, 3.5]); grid on; ylabel('Profile Mode');
-    legend('Raw Candidate (Noisy)', 'Latched Active Profile', 'Location', 'southeast');
-
-    subplot(4, 1, 4);
-    yyaxis left;
-    stairs(t_axis, amp_hist, 'b-', 'LineWidth', 1.5);
-    ylabel('Amplitude Factor A'); ylim([0.2, 1.1]);
-    yyaxis right;
-    plot(t_axis, power_hist, 'r-', 'LineWidth', 1.5);
-    ylabel('Avg Power (W)'); ylim([0, 1.0]);
-    grid on; xlabel('Mission Elapsed Time (seconds)');
-    legend('Amplitude Scale', 'Transmitter Avg Power', 'Location', 'northeast');
-
-    saveas(fig10, fullfile(plots_dir, '10_dynamic_simulation_timeline.png'));
+    % Figure 10: Candidate Profile Timeline
+    fig10 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
+    stairs(t_axis, cand_hist, 'm-', 'LineWidth', 1.5);
+    yticks([1, 2, 3]); yticklabels({'LOW\_FREQ', 'BALANCED', 'HIGH\_FREQ'});
+    ylim([0.5, 3.5]); grid on; xlabel('Mission Time (seconds)'); ylabel('Candidate State');
+    title('Plot 10: Raw Candidate Profile Timeline (Driven by Hysteresis Logic)');
+    saveas(fig10, fullfile(plots_dir, '10_candidate_profile_timeline.png'));
     close(fig10);
-    fprintf('  [+] Plot 10 saved: 10_dynamic_simulation_timeline.png\n');
+    fprintf('  [+] Plot 10 saved: 10_candidate_profile_timeline.png\n');
+
+    % Figure 11: Active Profile Timeline
+    fig11 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
+    stairs(t_axis, active_hist, 'k-', 'LineWidth', 2.0);
+    yticks([1, 2, 3]); yticklabels({'LOW\_FREQ', 'BALANCED', 'HIGH\_FREQ'});
+    ylim([0.5, 3.5]); grid on; xlabel('Mission Time (seconds)'); ylabel('Active Profile');
+    title('Plot 11: Committed Active Profile Timeline (Atomic Ping-Boundary Latching)');
+    saveas(fig11, fullfile(plots_dir, '11_active_profile_timeline.png'));
+    close(fig11);
+    fprintf('  [+] Plot 11 saved: 11_active_profile_timeline.png\n');
+
+    % Figure 12: Hysteresis / Debounce Demonstration Detail
+    fig12 = figure('Visible', 'off', 'Position', [100, 100, 900, 600]);
+    zoom_m = (t_axis >= 1.0) & (t_axis <= 1.8);
+    subplot(2, 1, 1);
+    plot(t_axis(zoom_m), Q_hist(zoom_m), 'b.-', 'LineWidth', 1.2); hold on;
+    yline(0.40, 'r:', 'Low->Bal (0.40)'); yline(0.30, 'r--', 'Bal->Low (0.30)');
+    ylabel('Quality Score Q'); grid on;
+    title('Plot 12: Hysteresis & Debounce Filter Action during Sediment Plume Event');
+    subplot(2, 1, 2);
+    stairs(t_axis(zoom_m), cand_hist(zoom_m), 'm:', 'LineWidth', 1.2); hold on;
+    stairs(t_axis(zoom_m), active_hist(zoom_m), 'k-', 'LineWidth', 2.0);
+    yticks([1, 2, 3]); yticklabels({'LOW\_FREQ', 'BALANCED', 'HIGH\_FREQ'});
+    ylabel('Profile State'); xlabel('Time (seconds)'); grid on;
+    legend('Candidate Profile', 'Latched Active Profile', 'Location', 'lower right');
+    saveas(fig12, fullfile(plots_dir, '12_hysteresis_debounce_demo.png'));
+    close(fig12);
+    fprintf('  [+] Plot 12 saved: 12_hysteresis_debounce_demo.png\n');
+
+    % Figure 13: Estimated Power Summary & Pulse Duration Sensitivity Analysis
+    fig13 = figure('Visible', 'off', 'Position', [100, 100, 1000, 450]);
+    subplot(1, 2, 1);
+    plot(t_axis, power_hist, 'r-', 'LineWidth', 1.5);
+    ylim([0, 0.8]); grid on; xlabel('Mission Time (seconds)'); ylabel('Transmitter Average Power (W)');
+    title('Transmitter Average Power across Dynamic Mission');
+
+    subplot(1, 2, 2);
+    durations_ms = [1.0, 2.0, 3.0];
+    p_sens = zeros(3, 3);
+    for d_idx = 1:3
+        d_val = durations_ms(d_idx) / 1000.0;
+        p_sens(d_idx, 1) = power_model(d_val, 1.00, cfg).average_power_w;
+        p_sens(d_idx, 2) = power_model(d_val, 0.70, cfg).average_power_w;
+        p_sens(d_idx, 3) = power_model(d_val, 0.40, cfg).average_power_w;
+    end
+    bar(durations_ms, p_sens);
+    grid on; xlabel('Pulse Duration (ms) [PRI = 20 ms]'); ylabel('Average Power (W)');
+    title('Sensitivity Analysis: Pulse Duration vs Power');
+    legend('A = 1.0 (Low Freq)', 'A = 0.7 (Balanced)', 'A = 0.4 (High Freq)', 'Location', 'northwest');
+    saveas(fig13, fullfile(plots_dir, '13_estimated_power_summary.png'));
+    close(fig13);
+    fprintf('  [+] Plot 13 saved: 13_estimated_power_summary.png\n');
 
     % --------------------------------------------------------------------------
-    % Phase 6: Run Automated Validation Test Suite
+    % Phase 6: Run 23-Point Automated Validation Suite
     % --------------------------------------------------------------------------
-    fprintf('\n[*] Phase 6: Executing 15-Point Automated Validation Suite...\n');
+    fprintf('\n[*] Phase 6: Executing 23-Point Automated Validation Suite...\n');
     val_results = run_validation_suite();
 
     % Final report
@@ -299,7 +325,7 @@ function run_simulation()
     fprintf('  SIMULATION EXECUTION COMPLETE\n');
     fprintf('  • Status:               Algorithmically Credible, Physically Unverified\n');
     fprintf('  • Validation Suite:     %d / %d Tests Passed\n', val_results.tests_passed, val_results.total_tests);
-    fprintf('  • Generated Plots:      %s (10 figures)\n', plots_dir);
+    fprintf('  • Generated Plots:      %s (13 figures)\n', plots_dir);
     fprintf('  • Exported Headers:     %s (4 C headers)\n', headers_dir);
     fprintf('==============================================================================\n');
 end

@@ -2,6 +2,7 @@
 Firmware export module for STM32G4 microcontroller target.
 Generates C header files containing uint16_t DAC lookup tables as firmware-ready
 prototype headers aligned for timer-triggered DMA playback.
+Profiles: chirp_low_frequency.h, chirp_balanced.h, chirp_high_frequency.h, sonar_profiles.h.
 """
 
 import os
@@ -47,6 +48,7 @@ def export_waveform_to_c_header(
         " * @section METADATA",
         f" * - Profile Mode:           {profile_label}",
         f" * - DAC Sample Rate:         {waveform.sample_rate_hz:,} Hz (4.0 MSPS)",
+        f" * - DAC Resolution:          {DAC_RESOLUTION_BITS}-bit unsigned (0 to 4095)",
         f" * - Start Frequency (f_0):   {waveform.f_start_hz:,.1f} Hz",
         f" * - End Frequency (f_1):     {waveform.f_end_hz:,.1f} Hz",
         f" * - Center Frequency (f_c):  {f_center:,.1f} Hz",
@@ -54,12 +56,10 @@ def export_waveform_to_c_header(
         f" * - Pulse Duration:          {waveform.duration_s * 1000.0:.3f} ms",
         f" * - Total Samples:           {sample_count}",
         f" * - Memory Footprint:        {byte_count:,} bytes ({byte_count / 1024.0:.2f} KB)",
-        f" * - DAC Resolution:          {DAC_RESOLUTION_BITS}-bit unsigned (0 to 4095)",
         f" * - Window Function:         {waveform.window_type.capitalize()}",
         f" * - Simulated SQNR:          {waveform.sqnr_db:.2f} dB",
         " *",
-        " * @note Prototype header for firmware bring-up. In STM32 firmware, configure DMA",
-        " *       in Circular or Normal mode with half-word (16-bit) memory and peripheral sizes.",
+        " * @note Generated simulation prototype waveform. Requires hardware validation.",
         " *       At 4.0 MSPS, external analog buffering and high-speed DAC configuration must be validated on scope.",
         " */",
         "",
@@ -83,12 +83,14 @@ def export_waveform_to_c_header(
         "  #endif",
         "#endif",
         "",
-        f"#define {array_name}_SAMPLE_RATE_HZ  ({waveform.sample_rate_hz}UL)",
-        f"#define {array_name}_F_START_HZ      ({int(waveform.f_start_hz)}UL)",
-        f"#define {array_name}_F_END_HZ        ({int(waveform.f_end_hz)}UL)",
-        f"#define {array_name}_DURATION_US     ({int(waveform.duration_s * 1e6)}UL)",
-        f"#define {array_name}_SAMPLE_COUNT    ({sample_count}U)",
-        f"#define {array_name}_SIZE_BYTES      ({byte_count}U)",
+        f"#define {array_name}_SAMPLE_RATE_HZ   ({waveform.sample_rate_hz}UL)",
+        f"#define {array_name}_DAC_BITS          ({DAC_RESOLUTION_BITS}U)",
+        f"#define {array_name}_F_START_HZ        ({int(waveform.f_start_hz)}UL)",
+        f"#define {array_name}_F_END_HZ          ({int(waveform.f_end_hz)}UL)",
+        f"#define {array_name}_BANDWIDTH_HZ      ({int(bw)}UL)",
+        f"#define {array_name}_DURATION_US       ({int(waveform.duration_s * 1e6)}UL)",
+        f"#define {array_name}_SAMPLE_COUNT      ({sample_count}U)",
+        f"#define {array_name}_SIZE_BYTES        ({byte_count}U)",
         "",
         f"DMA_ALIGN const uint16_t {array_name}[{sample_count}] = {{",
     ]
@@ -128,6 +130,7 @@ def export_unified_profile_header(output_path: str) -> None:
     content = """/**
  * @file    sonar_profiles.h
  * @brief   Master header registering all adaptive chirp lookup tables for STM32G4.
+ * @note    Generated simulation prototype waveform. Requires hardware validation.
  */
 
 #ifndef SONAR_PROFILES_H_
@@ -135,18 +138,18 @@ def export_unified_profile_header(output_path: str) -> None:
 
 #include <stdint.h>
 #include <stddef.h>
-#include "chirp_muddy.h"
+#include "chirp_low_frequency.h"
 #include "chirp_balanced.h"
-#include "chirp_clear.h"
+#include "chirp_high_frequency.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef enum {
-    SONAR_PROFILE_MUDDY = 0,     /**< 100-220 kHz for suspended sediment/turbid water */
-    SONAR_PROFILE_BALANCED = 1,  /**< 200-400 kHz nominal default */
-    SONAR_PROFILE_CLEAR = 2,     /**< 350-500 kHz for high resolution in clear water */
+    SONAR_PROFILE_LOW_FREQUENCY = 0, /**< 100-220 kHz for degraded/scattering channel */
+    SONAR_PROFILE_BALANCED = 1,      /**< 200-400 kHz nominal default (best range resolution) */
+    SONAR_PROFILE_HIGH_FREQUENCY = 2,/**< 350-500 kHz for high frequency beam directivity */
     SONAR_PROFILE_COUNT
 } SonarProfileId_t;
 
@@ -164,15 +167,15 @@ typedef struct {
 
 static const SonarProfileDescriptor_t SONAR_PROFILES[SONAR_PROFILE_COUNT] = {
     {
-        .profile_id     = SONAR_PROFILE_MUDDY,
-        .name           = "Muddy (100-220 kHz)",
-        .sample_rate_hz = CHIRP_MUDDY_LUT_SAMPLE_RATE_HZ,
-        .f_start_hz     = CHIRP_MUDDY_LUT_F_START_HZ,
-        .f_end_hz       = CHIRP_MUDDY_LUT_F_END_HZ,
-        .duration_us    = CHIRP_MUDDY_LUT_DURATION_US,
-        .sample_count   = CHIRP_MUDDY_LUT_SAMPLE_COUNT,
-        .size_bytes     = CHIRP_MUDDY_LUT_SIZE_BYTES,
-        .waveform_lut   = CHIRP_MUDDY_LUT
+        .profile_id     = SONAR_PROFILE_LOW_FREQUENCY,
+        .name           = "Low Frequency (100-220 kHz)",
+        .sample_rate_hz = CHIRP_LOW_FREQUENCY_LUT_SAMPLE_RATE_HZ,
+        .f_start_hz     = CHIRP_LOW_FREQUENCY_LUT_F_START_HZ,
+        .f_end_hz       = CHIRP_LOW_FREQUENCY_LUT_F_END_HZ,
+        .duration_us    = CHIRP_LOW_FREQUENCY_LUT_DURATION_US,
+        .sample_count   = CHIRP_LOW_FREQUENCY_LUT_SAMPLE_COUNT,
+        .size_bytes     = CHIRP_LOW_FREQUENCY_LUT_SIZE_BYTES,
+        .waveform_lut   = CHIRP_LOW_FREQUENCY_LUT
     },
     {
         .profile_id     = SONAR_PROFILE_BALANCED,
@@ -186,15 +189,15 @@ static const SonarProfileDescriptor_t SONAR_PROFILES[SONAR_PROFILE_COUNT] = {
         .waveform_lut   = CHIRP_BALANCED_LUT
     },
     {
-        .profile_id     = SONAR_PROFILE_CLEAR,
-        .name           = "Clear (350-500 kHz)",
-        .sample_rate_hz = CHIRP_CLEAR_LUT_SAMPLE_RATE_HZ,
-        .f_start_hz     = CHIRP_CLEAR_LUT_F_START_HZ,
-        .f_end_hz       = CHIRP_CLEAR_LUT_F_END_HZ,
-        .duration_us    = CHIRP_CLEAR_LUT_DURATION_US,
-        .sample_count   = CHIRP_CLEAR_LUT_SAMPLE_COUNT,
-        .size_bytes     = CHIRP_CLEAR_LUT_SIZE_BYTES,
-        .waveform_lut   = CHIRP_CLEAR_LUT
+        .profile_id     = SONAR_PROFILE_HIGH_FREQUENCY,
+        .name           = "High Frequency (350-500 kHz)",
+        .sample_rate_hz = CHIRP_HIGH_FREQUENCY_LUT_SAMPLE_RATE_HZ,
+        .f_start_hz     = CHIRP_HIGH_FREQUENCY_LUT_F_START_HZ,
+        .f_end_hz       = CHIRP_HIGH_FREQUENCY_LUT_F_END_HZ,
+        .duration_us    = CHIRP_HIGH_FREQUENCY_LUT_DURATION_US,
+        .sample_count   = CHIRP_HIGH_FREQUENCY_LUT_SAMPLE_COUNT,
+        .size_bytes     = CHIRP_HIGH_FREQUENCY_LUT_SIZE_BYTES,
+        .waveform_lut   = CHIRP_HIGH_FREQUENCY_LUT
     }
 };
 

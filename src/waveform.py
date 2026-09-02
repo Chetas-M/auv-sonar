@@ -54,6 +54,10 @@ class Waveform:
         return float(np.mean(self.quant_error_lsb))
 
     @property
+    def chirp_rate_hz_per_s(self) -> float:
+        return (self.f_end_hz - self.f_start_hz) / self.duration_s
+
+    @property
     def voltage_ideal(self) -> np.ndarray:
         """Analog output voltage estimate in Volts (0 to VREF)."""
         return (self.dac_codes / DAC_MAX_CODE) * DAC_VREF_VOLTS

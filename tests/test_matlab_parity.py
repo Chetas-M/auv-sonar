@@ -49,28 +49,34 @@ class TestMatlabArchitectureParity(unittest.TestCase):
         self.assertIn("STM32G474", content)
 
     def test_profile_definitions(self):
-        """Verify exact profile sweep bands in profile_definitions.m."""
+        """Verify exact canonical profile names, sweep bands, and headers in profile_definitions.m."""
         prof_path = os.path.join(self.matlab_dir, "profile_definitions.m")
         with open(prof_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Profile 1: MUDDY (100k - 220k)
+        # Profile 1: LOW_FREQUENCY (100k - 220k)
+        self.assertIn("LOW_FREQUENCY", content)
         self.assertIn("100.0e3", content)
         self.assertIn("220.0e3", content)
         self.assertIn("160.0e3", content)
         self.assertIn("120.0e3", content)
+        self.assertIn("chirp_low_frequency.h", content)
 
         # Profile 2: BALANCED (200k - 400k)
+        self.assertIn("BALANCED", content)
         self.assertIn("200.0e3", content)
         self.assertIn("400.0e3", content)
         self.assertIn("300.0e3", content)
         self.assertIn("200.0e3", content)
+        self.assertIn("chirp_balanced.h", content)
 
-        # Profile 3: CLEAR (350k - 500k)
+        # Profile 3: HIGH_FREQUENCY (350k - 500k)
+        self.assertIn("HIGH_FREQUENCY", content)
         self.assertIn("350.0e3", content)
         self.assertIn("500.0e3", content)
         self.assertIn("425.0e3", content)
         self.assertIn("150.0e3", content)
+        self.assertIn("chirp_high_frequency.h", content)
 
     def test_lfm_math_formula(self):
         """Verify analytical phase integration formula in generate_lfm_chirp.m."""
@@ -91,8 +97,8 @@ class TestMatlabArchitectureParity(unittest.TestCase):
             content = f.read()
 
         self.assertIn("Mackenzie", content)
-        self.assertIn("1.0 - total_penalty", content)
-        self.assertIn("w_turb = 0.50;", content)
+        self.assertIn("cfg.w_environment", content)
+        self.assertIn("Q_raw", content)
 
     def test_adaptive_controller_hysteresis_debounce(self):
         """Verify hysteresis deadbands and debounce persistence in adaptive_controller.m."""
@@ -100,29 +106,29 @@ class TestMatlabArchitectureParity(unittest.TestCase):
         with open(ctrl_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Check deadband thresholds
-        self.assertIn("0.75", content)
-        self.assertIn("0.65", content)
-        self.assertIn("0.40", content)
-        self.assertIn("0.30", content)
+        # Check directional deadband thresholds
+        self.assertIn("cfg.thresh_bal_to_high", content)
+        self.assertIn("cfg.thresh_high_to_bal", content)
+        self.assertIn("cfg.thresh_low_to_bal", content)
+        self.assertIn("cfg.thresh_bal_to_low", content)
         self.assertIn("debounce_count >= cfg.debounce_count", content)
 
     def test_validation_suite_tests_count(self):
-        """Verify run_validation_suite.m implements all 15 tests."""
+        """Verify run_validation_suite.m implements all 23 tests."""
         suite_path = os.path.join(self.matlab_dir, "run_validation_suite.m")
         with open(suite_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        for t_idx in range(1, 16):
+        for t_idx in range(1, 24):
             self.assertIn(f"report_test({t_idx},", content, f"Missing test #{t_idx} in run_validation_suite.m")
 
     def test_run_simulation_plots_count(self):
-        """Verify run_simulation.m generates all 10 plots."""
+        """Verify run_simulation.m generates all 13 plots."""
         sim_path = os.path.join(self.matlab_dir, "run_simulation.m")
         with open(sim_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        for p_idx in range(1, 11):
+        for p_idx in range(1, 14):
             plot_str = f"0{p_idx}_" if p_idx < 10 else f"{p_idx}_"
             self.assertIn(plot_str, content, f"Missing plot #{p_idx} save in run_simulation.m")
 

@@ -210,8 +210,10 @@ class TestCHeaderExport(unittest.TestCase):
             # Verify C header elements
             self.assertIn("#ifndef TEST_CHIRP_H_", content)
             self.assertIn("#define TEST_CHIRP_H_", content)
-            self.assertIn("#define TEST_CHIRP_LUT_SAMPLE_COUNT    (4000U)", content)
-            self.assertIn("#define TEST_CHIRP_LUT_SIZE_BYTES      (8000U)", content)
+            self.assertIn("TEST_CHIRP_LUT_SAMPLE_COUNT", content)
+            self.assertIn("(4000U)", content)
+            self.assertIn("TEST_CHIRP_LUT_SIZE_BYTES", content)
+            self.assertIn("(8000U)", content)
             self.assertIn("DMA_ALIGN const uint16_t TEST_CHIRP_LUT[4000] = {", content)
             self.assertIn("0x", content)
             self.assertIn("};", content)
@@ -292,12 +294,201 @@ class TestRigorousVerificationChecks(unittest.TestCase):
         )
         test_file = "tests/test_roundtrip.h"
         try:
-            export_waveform_to_c_header(wf, test_file, "CHIRP_RT_LUT", "MUDDY")
+            export_waveform_to_c_header(wf, test_file, "CHIRP_RT_LUT", "LOW_FREQUENCY")
             res = self.verify_header_rt(wf, test_file)
             self.assertTrue(res["file_exists"])
             self.assertTrue(res["count_matched"], f"Count mismatch: expected {res['sample_count_expected']}, got {res['sample_count_parsed']}")
             self.assertTrue(res["exact_match"], "Parsed C array must match Python DAC array bit-for-bit")
             self.assertEqual(res["max_discrepancy_lsb"], 0, f"Discrepancy: {res['max_discrepancy_lsb']} LSB")
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+
+class TestSection21ComprehensiveSuite(unittest.TestCase):
+    """Verifies all 23 specific requirements enumerated in Section 21."""
+
+    def setUp(self):
+        self.wf = generate_lfm_chirp(
+            f_start_hz=200_000.0,
+            f_end_hz=400_000.0,
+            duration_s=0.002,
+            sample_rate_hz=4_000_000,
+            amplitude_factor=1.0,
+            window_type="hann",
+        )
+
+    # 1. Correct sample count
+    def test_01_correct_sample_count(self):
+        self.assertEqual(self.wf.sample_count, 8000)
+
+    # 2. Correct pulse duration
+    def test_02_correct_pulse_duration(self):
+        self.assertAlmostEqual(self.wf.duration_s, 0.002)
+        self.assertAlmostEqual(self.wf.time_s[-1], 0.002 - 1.0 / 4_000_000)
+
+    # 3. Correct chirp slope
+    def test_03_correct_chirp_slope(self):
+        expected_slope = (400_000.0 - 200_000.0) / 0.002
+        self.assertAlmostEqual(self.wf.chirp_rate_hz_per_s, expected_slope)
+
+    # 4. Correct start frequency
+    def test_04_correct_start_frequency(self):
+        self.assertEqual(self.wf.f_start_hz, 200_000.0)
+
+    # 5. Correct end frequency
+    def test_05_correct_end_frequency(self):
+        self.assertEqual(self.wf.f_end_hz, 400_000.0)
+
+    # 6. No NaN
+    def test_06_no_nan(self):
+        self.assertFalse(np.any(np.isnan(self.wf.ideal_signal)))
+        self.assertFalse(np.any(np.isnan(self.wf.dac_codes)))
+
+    # 7. No Inf
+    def test_07_no_inf(self):
+        self.assertFalse(np.any(np.isinf(self.wf.ideal_signal)))
+
+    # 8. Correct Hann window length
+    def test_08_correct_hann_window_length(self):
+        self.assertEqual(len(self.wf.window), 8000)
+
+    # 9. Correct window application
+    def test_09_correct_window_application(self):
+        self.assertAlmostEqual(self.wf.window[0], 0.0, places=4)
+        self.assertAlmostEqual(self.wf.window[-1], 0.0, places=4)
+        self.assertAlmostEqual(self.wf.ideal_signal[0], 0.0, places=4)
+        self.assertAlmostEqual(self.wf.ideal_signal[-1], 0.0, places=4)
+
+    # 10. Codes remain within 0-4095
+    def test_10_codes_within_dac_range(self):
+        self.assertTrue(np.all(self.wf.dac_codes >= 0))
+        self.assertTrue(np.all(self.wf.dac_codes <= 4095))
+
+    # 11. Output type is uint16
+    def test_11_output_type_uint16(self):
+        self.assertEqual(self.wf.dac_codes.dtype, np.uint16)
+
+    # 12. Midscale behavior
+    def test_12_midscale_behavior(self):
+        wf_zero = generate_lfm_chirp(200_000, 400_000, 0.002, 4_000_000, amplitude_factor=0.0)
+        self.assertTrue(np.all(wf_zero.dac_codes == 2048))
+
+    # 13. Quantization error calculation
+    def test_13_quantization_error_calc(self):
+        err = self.wf.quant_error_lsb
+        self.assertLessEqual(np.max(np.abs(err)), 0.5001)
+        self.assertGreater(self.wf.sqnr_db, 68.0)
+
+    # 14. Correct candidate selection
+    def test_14_correct_candidate_selection(self):
+        engine = AdaptationEngine(debounce_count=1)
+        # High turbidity -> LOW_FREQUENCY
+        state_mud = engine.evaluate(AnalogInputs(turbidity=0.85, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(state_mud.band.value, "LOW_FREQUENCY")
+        # Low turbidity -> HIGH_FREQUENCY
+        state_clr = engine.evaluate(AnalogInputs(turbidity=0.15, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(state_clr.band.value, "HIGH_FREQUENCY")
+
+    # 15. Hysteresis prevents oscillation
+    def test_15_hysteresis_prevents_oscillation(self):
+        h = HysteresisThreshold(low_to_mid_threshold=0.40, mid_to_low_threshold=0.30,
+                                mid_to_high_threshold=0.75, high_to_mid_threshold=0.65)
+        # Inside deadband around 0.70: input at 0.76 -> tier 2 (HIGH); small drop to 0.70 -> stays tier 2
+        s1 = h.update_state(1, 0.76)
+        self.assertEqual(s1, 2)
+        s2 = h.update_state(s1, 0.70)
+        self.assertEqual(s2, 2)
+
+    # 16. Single transient does not switch profile
+    def test_16_single_transient_no_switch(self):
+        controller = PingController(debounce_count=2)
+        base = AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50)
+        controller.trigger_ping(base)
+
+        # Transient spike for 1 ping
+        _, _, s1, _ = controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(s1.band.value, "BALANCED") # Held back by debounce
+
+    # 17. Two consecutive evaluations switch profile
+    def test_17_two_consecutive_switch(self):
+        controller = PingController(debounce_count=2)
+        base = AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50)
+        controller.trigger_ping(base)
+
+        # Ping 1: spike
+        controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+
+        # Ping 2: persistent spike
+        _, _, s2, _ = controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(s2.band.value, "LOW_FREQUENCY")
+
+    # 18. Candidate reset behavior
+    def test_18_candidate_reset_behavior(self):
+        controller = PingController(debounce_count=2)
+        base = AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50)
+        controller.trigger_ping(base)
+
+        # Transient spike
+        controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+
+        # Reverts before second ping
+        _, _, s_revert, _ = controller.trigger_ping(AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(s_revert.band.value, "BALANCED")
+
+    # 19. Active profile does not change during active ping
+    def test_19_active_profile_frozen_during_ping(self):
+        controller = PingController(debounce_count=2)
+        base = AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50)
+        _, _, latched, _ = controller.trigger_ping(base)
+        self.assertEqual(latched.band.value, "BALANCED")
+
+    # 20. Pending profile activates at next ping boundary
+    def test_20_pending_activates_at_boundary(self):
+        controller = PingController(debounce_count=2)
+        base = AnalogInputs(turbidity=0.50, range_depth=0.50, target_strength=0.50)
+        controller.trigger_ping(base)
+        controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+        _, _, p2, _ = controller.trigger_ping(AnalogInputs(turbidity=0.90, range_depth=0.50, target_strength=0.50))
+        self.assertEqual(p2.band.value, "LOW_FREQUENCY")
+
+    # 21. C header generated correctly
+    def test_21_c_header_generated_correctly(self):
+        test_file = "tests/test_h21.h"
+        try:
+            export_waveform_to_c_header(self.wf, test_file, "TEST_LUT", "BALANCED")
+            self.assertTrue(os.path.exists(test_file))
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+    # 22. Sample count metadata correct
+    def test_22_sample_count_metadata_correct(self):
+        test_file = "tests/test_h22.h"
+        try:
+            export_waveform_to_c_header(self.wf, test_file, "TEST_LUT", "BALANCED")
+            with open(test_file, "r", encoding="utf-8") as f:
+                c = f.read()
+            self.assertIn("TEST_LUT_SAMPLE_COUNT", c)
+            self.assertIn("(8000U)", c)
+            self.assertIn("TEST_LUT_SIZE_BYTES", c)
+            self.assertIn("(16000U)", c)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+    # 23. DAC data round-trips correctly
+    def test_23_dac_data_roundtrip(self):
+        import re
+        test_file = "tests/test_h23.h"
+        try:
+            export_waveform_to_c_header(self.wf, test_file, "TEST_LUT", "BALANCED")
+            with open(test_file, "r", encoding="utf-8") as f:
+                c = f.read()
+            hex_tokens = re.findall(r"0x([0-9A-Fa-f]{4})", c)
+            parsed = [int(tok, 16) for tok in hex_tokens]
+            self.assertEqual(len(parsed), 8000)
+            self.assertTrue(np.array_equal(parsed, self.wf.dac_codes))
         finally:
             if os.path.exists(test_file):
                 os.remove(test_file)

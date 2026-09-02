@@ -341,7 +341,12 @@ def plot_dynamic_simulation_timeline(
     target_in = [h["inputs"].target_strength for h in history]
 
     # Map profile strings to numeric levels for plotting
-    band_level = [{"MUDDY": 2, "BALANCED": 1, "CLEAR": 0}[h["state"].band.value] for h in history]
+    band_map = {
+        "LOW_FREQUENCY": 2, "MUDDY": 2,
+        "BALANCED": 1,
+        "HIGH_FREQUENCY": 0, "CLEAR": 0
+    }
+    band_level = [band_map.get(h["state"].band.value, 1) for h in history]
     dur_ms = [h["state"].pulse_duration_s * 1000.0 for h in history]
     amp_fact = [h["state"].amplitude_factor for h in history]
     avg_power = [h["power"].average_power_w for h in history]
@@ -365,7 +370,7 @@ def plot_dynamic_simulation_timeline(
     apply_custom_style(ax2)
     ax2.step(times_s, band_level, where="post", color=PALETTE["yellow"], lw=2.0)
     ax2.set_yticks([0, 1, 2])
-    ax2.set_yticklabels(["CLEAR (350-500k)", "BALANCED (200-400k)", "MUDDY (100-220k)"])
+    ax2.set_yticklabels(["HIGH_FREQ (350-500k)", "BALANCED (200-400k)", "LOW_FREQ (100-220k)"])
     ax2.set_title("Latched Frequency Band Profile (Updated Only at Ping Boundaries)", fontsize=11, fontweight="bold")
     ax2.set_ylabel("Frequency Band")
 

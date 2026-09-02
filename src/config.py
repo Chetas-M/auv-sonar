@@ -1,12 +1,12 @@
 """
-System configuration and locked parameters for AUV Sonar Transmitter Digital Twin.
+System configuration and Single Source of Truth for AUV Sonar Transmitter Digital Twin.
 Target hardware: STM32G4 / STM32G474.
 """
 
 from dataclasses import dataclass
 
 # ==============================================================================
-# Locked Hardware & DAC Specifications (v1)
+# 1. [FIXED] System Parameters (Locked Hardware & DAC Specifications for v1)
 # ==============================================================================
 DAC_SAMPLE_RATE_HZ: int = 4_000_000       # 4.0 MSPS DAC update rate
 DAC_RESOLUTION_BITS: int = 12             # 12-bit unsigned DAC
@@ -33,11 +33,41 @@ MCU_MAX_SYSCLK_HZ: int = 170_000_000      # 170 MHz Cortex-M4
 MCU_SRAM_TOTAL_BYTES: int = 128 * 1024    # 128 KB total SRAM
 MCU_FLASH_TOTAL_BYTES: int = 512 * 1024   # 512 KB Flash
 BYTES_PER_SAMPLE: int = 2                 # uint16_t for 12-bit DAC
+NUM_PROFILES: int = 3                     # Exactly 3 predefined transmission profiles
 
-# Power Model Defaults (Configurable Engineering Estimates)
-# Note: These are model parameters for architectural evaluation, not bench proof.
+# ==============================================================================
+# 2. [ADAPTIVE] Controller & Hysteresis Parameters
+# ==============================================================================
+W_ENVIRONMENT: float = 0.50               # Weight for turbidity/particulate scattering
+W_ATTENUATION: float = 0.25               # Weight for seawater absorption
+W_NOISE: float = 0.25                     # Weight for ambient acoustic noise
+
+THRESH_LOW_TO_BAL: float = 0.40           # To rise from LOW_FREQUENCY to BALANCED: Q > 0.40
+THRESH_BAL_TO_LOW: float = 0.30           # To drop from BALANCED to LOW_FREQUENCY: Q <= 0.30
+THRESH_BAL_TO_HIGH: float = 0.75          # To rise from BALANCED to HIGH_FREQUENCY: Q >= 0.75
+THRESH_HIGH_TO_BAL: float = 0.65          # To drop from HIGH_FREQUENCY to BALANCED: Q < 0.65
+DEBOUNCE_COUNT: int = 2                   # N = 2 consecutive evaluations required
+
+AMP_LOW: float = 1.00                     # Normalized amplitude for LOW_FREQUENCY
+AMP_BALANCED: float = 0.70                # Normalized amplitude for BALANCED
+AMP_HIGH: float = 0.40                    # Normalized amplitude for HIGH_FREQUENCY
+
+# ==============================================================================
+# 3. [ENVIRONMENT] Scenario Inputs Baseline
+# ==============================================================================
+ENV_DEPTH_M: float = 50.0
+ENV_TEMPERATURE_C: float = 20.0
+ENV_SALINITY_PSU: float = 35.0
+ENV_TURBIDITY_NTU: float = 100.0
+ENV_AMBIENT_NOISE_DB: float = 55.0
+
+# ==============================================================================
+# 4. [ASSUMPTION] Power Model Defaults
+# Note: Modeled engineering estimates for transmitter payload alone, not bench proof.
+# ==============================================================================
 POWER_ACTIVE_WATTS: float = 5.0           # Power during transmit ping (PA + DAC + MCU active)
 POWER_IDLE_WATTS: float = 0.045           # Power between pings (PA shut down, MCU low-power sleep)
+POWER_ELEC_OVERHEAD_W: float = 0.30       # Electronic baseline overhead
 SUPPLY_VOLTAGE_VOLTS: float = 12.0        # Primary AUV battery bus voltage (V_bat)
 AUV_BATTERY_CAPACITY_WH: float = 99.0     # Standard subsea battery pack (99 Wh)
 

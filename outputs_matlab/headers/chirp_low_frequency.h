@@ -1,11 +1,12 @@
 /**
- * @file    chirp_muddy.h
- * @brief   Firmware-Ready Prototype 12-bit DAC Lookup Table for MUDDY Sonar Chirp
+ * @file    chirp_low_frequency.h
+ * @brief   Firmware-Ready Prototype 12-bit DAC Lookup Table for LOW_FREQUENCY Sonar Chirp
  * @target  STM32G474 (Timer TRGO -> DMA -> high-speed STM32G4 DAC path, verified during bring-up)
  *
  * @section METADATA
- * - Profile Mode:           MUDDY
+ * - Profile Mode:           LOW_FREQUENCY
  * - DAC Sample Rate:         4,000,000 Hz (4.0 MSPS)
+ * - DAC Resolution:          12-bit unsigned (0 to 4095)
  * - Start Frequency (f_0):   100,000.0 Hz
  * - End Frequency (f_1):     220,000.0 Hz
  * - Center Frequency (f_c):  160,000.0 Hz
@@ -13,15 +14,15 @@
  * - Pulse Duration:          2.000 ms
  * - Total Samples:           8000
  * - Memory Footprint:        16,000 bytes (15.62 KB)
- * - DAC Bit Depth:           12-bit unsigned (0 to 4095)
  * - Window Function:         Hann
  * - Simulated SQNR:          69.67 dB
  *
- * @note PROTOTYPE FIRMWARE LUT: Requires physical verification on STM32G4 bench hardware.
+ * @note Generated simulation prototype waveform. Requires hardware validation.
+ *       At 4.0 MSPS, external analog buffering and high-speed DAC mode must be confirmed on scope.
  */
 
-#ifndef CHIRP_MUDDY_H_
-#define CHIRP_MUDDY_H_
+#ifndef CHIRP_LOW_FREQUENCY_H_
+#define CHIRP_LOW_FREQUENCY_H_
 
 #include <stdint.h>
 
@@ -37,14 +38,16 @@ extern "C" {
   #endif
 #endif
 
-#define CHIRP_MUDDY_LUT_SAMPLE_RATE_HZ  (4000000UL)
-#define CHIRP_MUDDY_LUT_F_START_HZ      (100000UL)
-#define CHIRP_MUDDY_LUT_F_END_HZ        (220000UL)
-#define CHIRP_MUDDY_LUT_DURATION_US     (2000UL)
-#define CHIRP_MUDDY_LUT_SAMPLE_COUNT    (8000U)
-#define CHIRP_MUDDY_LUT_SIZE_BYTES      (16000U)
+#define CHIRP_LOW_FREQUENCY_LUT_SAMPLE_RATE_HZ     (4000000UL)
+#define CHIRP_LOW_FREQUENCY_LUT_DAC_BITS           (12U)
+#define CHIRP_LOW_FREQUENCY_LUT_F_START_HZ         (100000UL)
+#define CHIRP_LOW_FREQUENCY_LUT_F_END_HZ           (220000UL)
+#define CHIRP_LOW_FREQUENCY_LUT_BANDWIDTH_HZ       (120000UL)
+#define CHIRP_LOW_FREQUENCY_LUT_DURATION_US        (2000UL)
+#define CHIRP_LOW_FREQUENCY_LUT_SAMPLE_COUNT       (8000U)
+#define CHIRP_LOW_FREQUENCY_LUT_SIZE_BYTES         (16000U)
 
-DMA_ALIGN const uint16_t CHIRP_MUDDY_LUT[8000] = {
+DMA_ALIGN const uint16_t CHIRP_LOW_FREQUENCY_LUT[8000] = {
     0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF,
     0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x0800, 0x0800,
     0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800,
@@ -551,4 +554,4 @@ DMA_ALIGN const uint16_t CHIRP_MUDDY_LUT[8000] = {
 }
 #endif
 
-#endif /* CHIRP_MUDDY_H_ */
+#endif /* CHIRP_LOW_FREQUENCY_H_ */

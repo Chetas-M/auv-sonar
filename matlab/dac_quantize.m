@@ -50,6 +50,7 @@ function [dac_codes, quant_metrics] = dac_quantize(normalized_signal, cfg)
     quant_metrics.quant_error_lsb = quant_error_lsb;
     quant_metrics.quant_error_mv = quant_error_mv;
     quant_metrics.max_error_lsb = max(abs(quant_error_lsb));
+    quant_metrics.rms_error_lsb = sqrt(mean(quant_error_lsb .^ 2));
     quant_metrics.mean_error_lsb = mean(quant_error_lsb);
     quant_metrics.variance_error_lsb = var(quant_error_lsb);
     quant_metrics.sqnr_db = sqnr_db;
