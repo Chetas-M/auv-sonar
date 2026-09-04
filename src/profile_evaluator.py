@@ -25,6 +25,7 @@ class EnvironmentalScenario:
     depth_m: float = 50.0
     temperature_c: float = 20.0
     salinity_psu: float = 35.0
+    pH: float = 8.0                  # Seawater pH (Ainslie & McColm 1998 baseline: 8.0)
     turbidity: float = 0.0           # Optional sensitivity analysis heuristic
     noise_penalty_db: float = 0.0    # Normalized relative noise penalty (dB)
     ambient_noise_db: float = 0.0    # Backward compatibility alias
@@ -93,15 +94,21 @@ def compute_mackenzie_sound_speed(temperature_c: float, salinity_psu: float, dep
     )
 
 
-def ainslie_mccolm_absorption(f_khz: float, temperature_c: float, salinity_psu: float, depth_m: float) -> float:
+def ainslie_mccolm_absorption(
+    f_khz: float,
+    temperature_c: float,
+    salinity_psu: float,
+    depth_m: float,
+    pH: float = 8.0,
+) -> float:
     """
     Computes chemical relaxation and viscous absorption in seawater (dB/km)
-    using the Ainslie & McColm (1998) model.
+    using the published Ainslie & McColm (1998) model.
     
     Constituent Physical Terms:
       1. Boric Acid relaxation (B(OH)3):
          f1 = 0.78 * sqrt(S/35) * exp(T/26)              [kHz]
-         A1 = 0.106 * exp((T - 20)/27)                   [dB/(km*kHz)]
+         A1 = 0.106 * exp((pH - 8)/0.56)                 [dB/(km*kHz)]
          Boric = (A1 * f1 * f^2) / (f1^2 + f^2)
          
       2. Magnesium Sulfate relaxation (MgSO4):
@@ -119,15 +126,17 @@ def ainslie_mccolm_absorption(f_khz: float, temperature_c: float, salinity_psu: 
       temperature_c: Water temperature in degrees Celsius (C)
       salinity_psu: Practical Salinity Units (PSU or ppt)
       depth_m: Water depth in metres (m)
+      pH: Seawater acidity/alkalinity (standard open ocean pH = 8.0)
       returns: Total absorption coefficient in dB/km
     """
     T = float(temperature_c)
     S = float(salinity_psu)
     D = float(depth_m)
+    ph = float(pH)
 
-    # Boric acid relaxation
+    # Boric acid relaxation (published Ainslie & McColm 1998 formula with pH dependence)
     f1 = 0.78 * np.sqrt(S / 35.0) * np.exp(T / 26.0)
-    A1 = 0.106 * np.exp((T - 20.0) / 27.0)
+    A1 = 0.106 * np.exp((ph - 8.0) / 0.56)
 
     # Magnesium sulfate relaxation (including hydrostatic pressure correction factor P2)
     # D enters in metres, so D_km / 6.0 = D / 6000.0
@@ -141,6 +150,7 @@ def ainslie_mccolm_absorption(f_khz: float, temperature_c: float, salinity_psu: 
     f_sq = f_khz ** 2
     alpha = (A1 * f1 * f_sq) / (f1 ** 2 + f_sq) + (A2 * P2 * f2 * f_sq) / (f2 ** 2 + f_sq) + A3 * f_sq
     return float(alpha)
+
 
 
 def evaluate_single_profile(
