@@ -247,7 +247,7 @@ function run_simulation()
     yline(cfg.thresh_bal_to_low, 'r--', 'Demote to Low (0.30)');
     ylim([0, 1]); grid on; xlabel('Mission Time (seconds)'); ylabel('Quality Score Q');
     title('Plot 9: Predicted Channel Quality Score Timeline with Directional Thresholds');
-    legend('Score Q', 'Location', 'lower right');
+    legend('Score Q', 'Location', 'southeast');
     saveas(fig9, fullfile(plots_dir, '09_channel_quality_timeline.png'));
     close(fig9);
     fprintf('  [+] Plot 9 saved: 09_channel_quality_timeline.png\n');
@@ -285,7 +285,7 @@ function run_simulation()
     stairs(t_axis(zoom_m), active_hist(zoom_m), 'k-', 'LineWidth', 2.0);
     yticks([1, 2, 3]); yticklabels({'LOW\_FREQ', 'BALANCED', 'HIGH\_FREQ'});
     ylabel('Profile State'); xlabel('Time (seconds)'); grid on;
-    legend('Candidate Profile', 'Latched Active Profile', 'Location', 'lower right');
+    legend('Candidate Profile', 'Latched Active Profile', 'Location', 'southeast');
     saveas(fig12, fullfile(plots_dir, '12_hysteresis_debounce_demo.png'));
     close(fig12);
     fprintf('  [+] Plot 12 saved: 12_hysteresis_debounce_demo.png\n');
