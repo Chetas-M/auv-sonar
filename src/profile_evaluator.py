@@ -96,7 +96,30 @@ def compute_mackenzie_sound_speed(temperature_c: float, salinity_psu: float, dep
 def ainslie_mccolm_absorption(f_khz: float, temperature_c: float, salinity_psu: float, depth_m: float) -> float:
     """
     Computes chemical relaxation and viscous absorption in seawater (dB/km)
-    using Ainslie & McColm (1998).
+    using the Ainslie & McColm (1998) model.
+    
+    Constituent Physical Terms:
+      1. Boric Acid relaxation (B(OH)3):
+         f1 = 0.78 * sqrt(S/35) * exp(T/26)              [kHz]
+         A1 = 0.106 * exp((T - 20)/27)                   [dB/(km*kHz)]
+         Boric = (A1 * f1 * f^2) / (f1^2 + f^2)
+         
+      2. Magnesium Sulfate relaxation (MgSO4):
+         f2 = 42.0 * exp(T/17)                           [kHz]
+         A2 = 0.52 * (1 + T/43) * (S/35)                 [dB/(km*kHz)]
+         P2 = exp(-D_km / 6) = exp(-depth_m / 6000.0)    [Hydrostatic pressure reduction factor]
+         MgSO4 = (A2 * P2 * f2 * f^2) / (f2^2 + f^2)
+         
+      3. Pure Water viscous absorption:
+         A3 = 0.00049 * exp(-(T/27) - (depth_m/17000.0)) [dB/(km*kHz^2)]
+         PureWater = A3 * f^2
+         
+    Units:
+      f_khz: Frequency in kilohertz (kHz)
+      temperature_c: Water temperature in degrees Celsius (C)
+      salinity_psu: Practical Salinity Units (PSU or ppt)
+      depth_m: Water depth in metres (m)
+      returns: Total absorption coefficient in dB/km
     """
     T = float(temperature_c)
     S = float(salinity_psu)
@@ -106,15 +129,17 @@ def ainslie_mccolm_absorption(f_khz: float, temperature_c: float, salinity_psu: 
     f1 = 0.78 * np.sqrt(S / 35.0) * np.exp(T / 26.0)
     A1 = 0.106 * np.exp((T - 20.0) / 27.0)
 
-    # Magnesium sulfate relaxation
+    # Magnesium sulfate relaxation (including hydrostatic pressure correction factor P2)
+    # D enters in metres, so D_km / 6.0 = D / 6000.0
     f2 = 42.0 * np.exp(T / 17.0)
     A2 = 0.52 * (1.0 + T / 43.0) * (S / 35.0)
+    P2 = np.exp(-D / 6000.0)
 
-    # Pure water viscous absorption
+    # Pure water viscous absorption (D enters in metres, so D_km / 17.0 = D / 17000.0)
     A3 = 0.00049 * np.exp(-(T / 27.0) - (D / 17000.0))
 
     f_sq = f_khz ** 2
-    alpha = (A1 * f1 * f_sq) / (f1 ** 2 + f_sq) + (A2 * f2 * f_sq) / (f2 ** 2 + f_sq) + A3 * f_sq
+    alpha = (A1 * f1 * f_sq) / (f1 ** 2 + f_sq) + (A2 * P2 * f2 * f_sq) / (f2 ** 2 + f_sq) + A3 * f_sq
     return float(alpha)
 
 

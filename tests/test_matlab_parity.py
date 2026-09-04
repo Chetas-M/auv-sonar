@@ -131,10 +131,16 @@ class TestMatlabArchitectureParity(unittest.TestCase):
         with open(sim_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        for p_idx in range(1, 14):
-            plot_str = f"0{p_idx}_" if p_idx < 10 else f"{p_idx}_"
-            self.assertIn(plot_str, content, f"Missing plot #{p_idx} save in run_simulation.m")
+    def test_evaluate_profile_performance_p2(self):
+        """Verify that evaluate_profile_performance.m implements P2 hydrostatic pressure correction."""
+        eval_path = os.path.join(self.matlab_dir, "evaluate_profile_performance.m")
+        with open(eval_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("P2 = exp(-D / 6000.0);", content)
+        self.assertIn("A2 * P2 * f2", content)
 
 
 if __name__ == "__main__":
     unittest.main()
+

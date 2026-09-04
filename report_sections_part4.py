@@ -311,6 +311,14 @@ def build_appendices(doc):
         "Complete technical parameter specifications for all three canonical transmission profiles locked for Version 1 runtime:"
     )
 
+    canonical = get_canonical_results()
+    p_low = canonical["profiles"]["LOW_FREQUENCY"]
+    p_bal = canonical["profiles"]["BALANCED"]
+    p_high = canonical["profiles"]["HIGH_FREQUENCY"]
+    v_low = canonical["viability_boundaries"]["LOW_FREQUENCY"]
+    v_bal = canonical["viability_boundaries"]["BALANCED"]
+    v_high = canonical["viability_boundaries"]["HIGH_FREQUENCY"]
+
     app_a_data = [
         ("Parameter", "LOW_FREQUENCY (Profile 1)", "BALANCED (Profile 2)", "HIGH_FREQUENCY (Profile 3)"),
         ("Start Frequency (f_start)", "100,000 Hz (100.0 kHz)", "200,000 Hz (200.0 kHz)", "350,000 Hz (350.0 kHz)"),
@@ -329,7 +337,7 @@ def build_appendices(doc):
         ("Simulated SQNR", "69.67 dB", "69.67 dB", "69.70 dB"),
         ("Theoretical Range Res. (ΔR)", "6.25 mm (c = 1500 m/s)", "3.75 mm (c = 1500 m/s)", "5.00 mm (c = 1500 m/s)"),
         ("Relative Directivity Proxy", "0.533x reference", "1.000x baseline reference", "1.417x reference"),
-        ("Baseline Absorption (α_bar)", "64.47 dB/km", "106.32 dB/km", "136.64 dB/km"),
+        ("Baseline Absorption (α_bar)", f"{p_low['alpha_band_mean_db_km']:.2f} dB/km", f"{p_bal['alpha_band_mean_db_km']:.2f} dB/km", f"{p_high['alpha_band_mean_db_km']:.2f} dB/km"),
         ("Primary Mission Alignment", "Long-range search / degraded channel", "Default survey mapping & bathymetry", "Narrow-beam obstacle tracking"),
     ]
 
@@ -351,7 +359,7 @@ def build_appendices(doc):
         ("Quantization Error Residual", "ε_q[n] = DAC_Code[n] - (2048 + 2047 · s_norm[n])   [LSB]"),
         ("Simulated SQNR", "SQNR = 10 · log10( ∑ s²[n] / ∑ (s[n] - s_quant[n])² )   [dB]"),
         ("Mackenzie Sound Speed", "c(T,S,D) = 1448.96 + 4.591T - 0.05304T² + 0.0002374T³ + 1.34(S-35) + 0.0163D + 0.0001675D² - 0.01025T(S-35) - 7.139e-7TD³"),
-        ("Ainslie-McColm Absorption", "α(f) = (A₁ f₁ f²) / (f₁² + f²) + (A₂ f₂ f²) / (f₂² + f²) + A₃ f²   [dB/km]"),
+        ("Ainslie-McColm Absorption", "α(f) = (A₁ f₁ f²) / (f₁² + f²) + (A₂ P₂ f₂ f²) / (f₂² + f²) + A₃ f²   [dB/km],   where P₂ = exp(-D/6000)"),
         ("Turbidity Heuristic", "α_turb(f, turb) = 35.0 · (turb / 100) · (f / 300)²   [dB/km]  [UNVALIDATED HEURISTIC]"),
         ("Relative Transmission Loss", "TL(R) = 20 · log10(R_eff) + α_bar · (R_eff / 1000)   [dB]"),
         ("Relative Propagation Margin", "Margin_rel(R) = -TL(R) - NP_sim   [dB]"),
@@ -369,14 +377,14 @@ def build_appendices(doc):
     add_h2(doc, "Appendix C: Automated Test Suite Summary")
     add_body(
         doc,
-        "Summary of the complete 64-test Python automated validation suite (all passing) plus 35 MATLAB checks (99 total):"
+        "Summary of the complete 66-test Python automated validation suite (all passing) plus 35 MATLAB checks (101 total):"
     )
 
     test_summary = [
-        ("tests/test_matlab_parity.py", "8", "8 Passed (100%)", "Verifies MATLAB file existence, Single Source of Truth parameter alignment, phase integration formula, Q score calculation, Schmitt hysteresis thresholds, 23-test validation suite count, and 13-plot simulation count."),
+        ("tests/test_matlab_parity.py", "9", "9 Passed (100%)", "Verifies MATLAB file existence, Single Source of Truth parameter alignment, P2 hydrostatic correction in evaluate_profile_performance.m, phase integration formula, Q score calculation, Schmitt hysteresis thresholds, 23-test validation suite count, and 13-plot simulation count."),
         ("tests/test_profile_evaluation.py", "12", "12 Passed (100%)", "Verifies Priority 1: 3-profile evaluation, no NaN/Inf, positive finite attenuation, monotonic TL with range, attenuation ordering (HIGH > BAL > LOW), range resolution ordering (BAL = 3.75 mm best), directivity ordering (HIGH = 1.417x best), 5-point discrete band confinement, long-range fallback to LOW at 200m, Survey mode selection of BAL, and Directivity mode selection of HIGH."),
         ("tests/test_simulator.py", "36", "36 Passed (100%)", "Verifies LFM chirp synthesis, sample count (8000), duration (2.0 ms), slope (100 MHz/s), start/end frequencies, Hann window tapering, 12-bit DAC codes [0, 4095], midscale 2048, SQNR > 69 dB, Hilbert frequency linearity, FFT in-band energy (>99.999%), STFT spectrogram ridge linearity (R² = 0.9901), hysteresis deadbands (10%), debounce persistence (N=2), ping-boundary freeze, power model, and C header export round-trip."),
-        ("tests/test_physics_regression.py", "8", "8 Passed (100%)", "Verifies Hz/kHz unit scaling, dB/km vs dB/m conversions, Ainslie-McColm agreement within 1.0% against independent literature reference, profile mean attenuation constants (LOW=64.47, BAL=106.32, HIGH=136.64 dB/km), attenuation monotonicity, and viability extinction boundaries (HIGH=155.1m, BAL=184.9m, LOW tested 200m / 259.4m theoretical cutoff)."),
+        ("tests/test_physics_regression.py", "9", "9 Passed (100%)", f"Verifies Hz/kHz unit scaling, dB/km vs dB/m conversions, Ainslie-McColm machine-precision parity (< 1e-10 relative error) across the 10m-300m operational depth envelope, P2 hydrostatic depth regression, profile mean attenuation constants (LOW={p_low['alpha_band_mean_db_km']:.2f}, BAL={p_bal['alpha_band_mean_db_km']:.2f}, HIGH={p_high['alpha_band_mean_db_km']:.2f} dB/km), and extinction boundaries (HIGH={v_high['rounded_boundary_m']:.1f}m, BAL={v_bal['rounded_boundary_m']:.1f}m, LOW tested 200m / {v_low['rounded_extinction_boundary_m']:.1f}m theoretical cutoff)."),
     ]
 
     col_w = [Inches(2.2), Inches(0.8), Inches(1.3), Inches(2.2)]

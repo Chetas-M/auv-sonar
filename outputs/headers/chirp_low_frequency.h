@@ -2,7 +2,7 @@
  * @file    chirp_low_frequency.h
  * @brief   Firmware-Ready Prototype 12-bit DAC Lookup Table for LOW_FREQUENCY Sonar Chirp
  * @target  STM32G474 (Timer TRGO -> DMA -> high-speed STM32G4 DAC path, with exact DAC instance/pin verified during board bring-up)
- * @date    2026-09-02 21:45:10
+ * @date    2026-09-04 15:28:43
  *
  * @section METADATA
  * - Profile Mode:           LOW_FREQUENCY

@@ -227,8 +227,17 @@ def generate_canonical_dataset() -> Dict[str, Any]:
             "selected_profile": dec.candidate_name,
         })
 
-    # Independent reference cross-validation table data
-    cross_val = run_cross_validation_table(tolerance_pct=1.0)
+    # Independent reference cross-validation table data (machine precision parity)
+    cross_val = run_cross_validation_table(tolerance_pct=1e-6)
+
+    ext_high = evaluated_profiles["HIGH_FREQUENCY"]["extinction_boundary_m"]
+    ext_bal = evaluated_profiles["BALANCED"]["extinction_boundary_m"]
+    ext_low = evaluated_profiles["LOW_FREQUENCY"]["extinction_boundary_m"]
+
+    low_mean_alpha = evaluated_profiles["LOW_FREQUENCY"]["alpha_band_mean_db_km"]
+    tl_200 = 20.0 * np.log10(200.0) + low_mean_alpha * 0.2
+    margin_200 = -tl_200
+    headroom_200 = margin_200 - (-65.0)
 
     dataset = {
         "metadata": {
@@ -249,30 +258,30 @@ def generate_canonical_dataset() -> Dict[str, Any]:
         },
         "viability_boundaries": {
             "HIGH_FREQUENCY": {
-                "boundary_range_m": 155.08,
-                "rounded_boundary_m": 155.1,
+                "boundary_range_m": ext_high,
+                "rounded_boundary_m": round(ext_high, 1),
                 "description": "Relative margin crosses -65.0 dB threshold",
             },
             "BALANCED": {
-                "boundary_range_m": 184.87,
-                "rounded_boundary_m": 184.9,
+                "boundary_range_m": ext_bal,
+                "rounded_boundary_m": round(ext_bal, 1),
                 "description": "Relative margin crosses -65.0 dB threshold",
             },
             "LOW_FREQUENCY": {
                 "tested_max_range_m": 200.0,
-                "margin_at_tested_max_db": -58.91,
-                "headroom_above_threshold_db": 6.09,
+                "margin_at_tested_max_db": round(margin_200, 2),
+                "headroom_above_threshold_db": round(headroom_200, 2),
                 "is_viable_at_tested_max": True,
-                "theoretical_extinction_boundary_m": 259.37,
-                "rounded_extinction_boundary_m": 259.4,
-                "description": "Remains viable through full tested 200 m operational range (+6.09 dB headroom); theoretical extinction boundary at 259.4 m",
+                "theoretical_extinction_boundary_m": ext_low,
+                "rounded_extinction_boundary_m": round(ext_low, 1),
+                "description": f"Remains viable through full tested 200 m operational range (+{headroom_200:.2f} dB headroom); theoretical extinction boundary at {ext_low:.1f} m",
             },
         },
         "profiles": evaluated_profiles,
         "range_sweep": range_sweep,
         "noise_sweep": noise_sweep,
         "cross_validation_summary": {
-            "tolerance_pct": 1.0,
+            "tolerance_pct": 1e-6,
             "all_passed": all(row["passed"] for row in cross_val),
             "comparison_points": cross_val,
         },

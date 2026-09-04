@@ -109,14 +109,16 @@ Every parameter across both Python and MATLAB implementations is categorized int
 
 ---
 
-## 5. Automated Engineering Validation (56 Tests Passed)
+## 5. Automated Engineering Validation (66 Tests Passed in Python, 101 Total)
 
-The repository contains automated validation test suites in both MATLAB and Python verifying all 23 locked implementation requirements and 12 Priority 1 profile evaluation checks:
+The repository contains automated validation test suites in both MATLAB and Python verifying all 23 locked implementation requirements, 12 Priority 1 profile evaluation checks, 9 physics regression & hydrostatic parity tests, and cross-platform architecture alignment:
 
 - **23 Hardware & Signal Validation Tests** (`matlab/run_validation_suite.m` & `tests/test_simulator.py`):
   - Sample count ($8,000$), pulse duration ($2.0\text{ ms}$), chirp slope ($100\text{ MHz/s}$), start/end frequency, no NaN/Inf, Hann tapering, 12-bit DAC codes, midscale code ($2048$), SQNR ($69.7\text{ dB}$), hysteresis deadbands, debounce persistence ($N=2$), ping-boundary latching, and bit-exact C header export round-trip.
 - **12 Priority 1 Profile Evaluation Tests** (`matlab/run_profile_evaluation_tests.m` & `tests/test_profile_evaluation.py`):
   - 5-point discrete frequency evaluation across band, positive finite attenuation, monotonic transmission loss with range, baseline attenuation ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), bandwidth-based range resolution verification ($\Delta R = 3.75\text{ mm}$ best), relative directivity ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), band confinement of evaluation points, long-range viability fallback to `LOW_FREQUENCY`, Survey Mode selection of `BALANCED`, Directivity Mode selection of `HIGH_FREQUENCY`, and bit-exact determinism.
+- **9 Physics Regression & Hydrostatic Parity Tests** (`tests/test_physics_regression.py` & `tests/test_matlab_parity.py`):
+  - Unit scaling (Hz vs kHz, dB/km vs dB/m), machine-precision implementation parity ($<10^{-10}$ relative error) against independent literature formulations across $10\text{--}300\text{ m}$ depth envelope, analytical validation and monotonicity of the $P_2 = \exp(-D/6000)$ hydrostatic pressure factor on $\text{MgSO}_4$, canonical baseline attenuation constants ($63.99, 105.62, 135.86\text{ dB/km}$), viability extinction boundaries ($155.7\text{ m}, 185.8\text{ m}, 260.7\text{ m}$), and canonical JSON artifact integrity.
 
 ---
 

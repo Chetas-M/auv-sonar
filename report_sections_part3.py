@@ -45,13 +45,21 @@ def build_chapter_16_figure_by_figure_analysis(doc):
         description="Ainslie-McColm (1998) absorption curve across 80–520 kHz showing baseline seawater and turbidity sensitivity heuristics, with 5 discrete evaluation points marked per profile band.",
         width_in=5.8
     )
+    canonical = get_canonical_results()
+    p_low = canonical["profiles"]["LOW_FREQUENCY"]
+    p_bal = canonical["profiles"]["BALANCED"]
+    p_high = canonical["profiles"]["HIGH_FREQUENCY"]
+    v_low = canonical["viability_boundaries"]["LOW_FREQUENCY"]
+    v_bal = canonical["viability_boundaries"]["BALANCED"]
+    v_high = canonical["viability_boundaries"]["HIGH_FREQUENCY"]
+
     add_body(
         doc,
         "Technical Analysis of Figure 1:\n"
-        "• What is Plotted: The continuous solid black curve shows baseline seawater attenuation α(f) in dB/km across 80 to 520 kHz under standard conditions (T = 20°C, S = 35 PSU, D = 50 m). Dashed and dotted curves represent optional turbidity sensitivity heuristics (turb = 30 and turb = 80). Coloured scatter points mark the five discrete frequency evaluation points for LOW_FREQUENCY (orange), BALANCED (blue), and HIGH_FREQUENCY (green).\n"
+        "• What is Plotted: The continuous solid black curve shows baseline seawater attenuation α(f) in dB/km across 80 to 520 kHz under standard conditions (T = 20°C, S = 35 PSU, D = 50 m, with P2 hydrostatic correction). Dashed and dotted curves represent optional turbidity sensitivity heuristics (turb = 30 and turb = 80). Coloured scatter points mark the five discrete frequency evaluation points for LOW_FREQUENCY (orange), BALANCED (blue), and HIGH_FREQUENCY (green).\n"
         "• Axes Meaning: The horizontal axis denotes acoustic frequency in kHz; the vertical axis denotes attenuation coefficient α in dB/km.\n"
-        "• Important Trend: Attenuation increases monotonically and super-linearly from ~29 dB/km at 80 kHz to ~163 dB/km at 520 kHz under standard ocean baseline conditions, driven by magnesium sulfate relaxation and pure water viscosity.\n"
-        "• Engineering Conclusion: Demonstrates why 5-point discrete sampling is necessary: a single center frequency fails to capture the steep slope across the 200 kHz bandwidth of BALANCED. LOW_FREQUENCY operates in a lower attenuation regime (mean 64.47 dB/km vs 136.64 dB/km for HIGH_FREQUENCY).\n"
+        "• Important Trend: Attenuation increases monotonically and super-linearly from ~29 dB/km at 80 kHz to ~162 dB/km at 520 kHz under standard ocean baseline conditions, driven by magnesium sulfate relaxation and pure water viscosity.\n"
+        f"• Engineering Conclusion: Demonstrates why 5-point discrete sampling is necessary: a single center frequency fails to capture the steep slope across the 200 kHz bandwidth of BALANCED. LOW_FREQUENCY operates in a lower attenuation regime (mean {p_low['alpha_band_mean_db_km']:.2f} dB/km vs {p_high['alpha_band_mean_db_km']:.2f} dB/km for HIGH_FREQUENCY).\n"
         "• Limiting Assumptions: Seawater chemistry assumes standard open-ocean ionic ratios; turbidity curves represent an unvalidated phenomenological heuristic (f² proportionality), not calibrated sediment physics."
     )
 
@@ -70,7 +78,7 @@ def build_chapter_16_figure_by_figure_analysis(doc):
         "• What is Plotted: Relative propagation margin Margin_rel(R) = -TL(R) in dB plotted across target distance R from 5 m to 200 m for LOW_FREQUENCY, BALANCED, and HIGH_FREQUENCY. The red dashed horizontal line denotes the policy viability threshold (-65.0 dB).\n"
         "• Axes Meaning: Horizontal axis represents target range R in meters; vertical axis represents relative propagation margin in dB.\n"
         "• Important Trend: Margin decays rapidly at short range due to geometric spherical spreading (20 log10(R)) and separates widely at long range due to frequency-dependent absorption (α · R).\n"
-        "• Engineering Conclusion: At R = 155.1 m, HIGH_FREQUENCY drops below -65.0 dB and becomes non-viable. At R = 184.9 m, BALANCED drops below -65.0 dB. LOW_FREQUENCY remains comfortably viable (-58.91 dB margin, +6.09 dB headroom) at 200 m, with a computed theoretical extinction cutoff at 259.4 m. This proves that high-frequency modes cannot survive long-range propagation, establishing the physical necessity for profile adaptation.\n"
+        f"• Engineering Conclusion: At R = {v_high['rounded_boundary_m']:.1f} m, HIGH_FREQUENCY drops below -65.0 dB and becomes non-viable. At R = {v_bal['rounded_boundary_m']:.1f} m, BALANCED drops below -65.0 dB. LOW_FREQUENCY remains comfortably viable ({v_low['margin_at_tested_max_db']:.2f} dB margin, +{v_low['headroom_above_threshold_db']:.2f} dB headroom) at 200 m, with a computed theoretical extinction cutoff at {v_low['rounded_extinction_boundary_m']:.1f} m. This proves that high-frequency modes cannot survive long-range propagation, establishing the physical necessity for profile adaptation.\n"
         "• Limiting Assumptions: Assumes spherical spreading in an unbounded medium; does not model shallow-water cylindrical spreading or boundary multipath."
     )
 

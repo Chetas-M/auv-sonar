@@ -1,8 +1,8 @@
 {
   "metadata": {
     "schema_version": "1.0.0",
-    "git_commit": "2556041",
-    "generation_timestamp_utc": "2026-09-04T09:23:48Z",
+    "git_commit": "aa03038",
+    "generation_timestamp_utc": "2026-09-04T09:55:38Z",
     "description": "Authoritative canonical simulation results for AUV Adaptive Sonar Digital Twin"
   },
   "environmental_baseline": {
@@ -17,23 +17,23 @@
   },
   "viability_boundaries": {
     "HIGH_FREQUENCY": {
-      "boundary_range_m": 155.08,
-      "rounded_boundary_m": 155.1,
+      "boundary_range_m": 155.7,
+      "rounded_boundary_m": 155.7,
       "description": "Relative margin crosses -65.0 dB threshold"
     },
     "BALANCED": {
-      "boundary_range_m": 184.87,
-      "rounded_boundary_m": 184.9,
+      "boundary_range_m": 185.77,
+      "rounded_boundary_m": 185.8,
       "description": "Relative margin crosses -65.0 dB threshold"
     },
     "LOW_FREQUENCY": {
       "tested_max_range_m": 200.0,
-      "margin_at_tested_max_db": -58.91,
-      "headroom_above_threshold_db": 6.09,
+      "margin_at_tested_max_db": -58.82,
+      "headroom_above_threshold_db": 6.18,
       "is_viable_at_tested_max": true,
-      "theoretical_extinction_boundary_m": 259.37,
-      "rounded_extinction_boundary_m": 259.4,
-      "description": "Remains viable through full tested 200 m operational range (+6.09 dB headroom); theoretical extinction boundary at 259.4 m"
+      "theoretical_extinction_boundary_m": 260.66,
+      "rounded_extinction_boundary_m": 260.7,
+      "description": "Remains viable through full tested 200 m operational range (+6.18 dB headroom); theoretical extinction boundary at 260.7 m"
     }
   },
   "profiles": {
@@ -58,64 +58,64 @@
         220.0
       ],
       "alpha_points_db_km": [
-        38.8521,
-        53.5821,
-        66.3084,
-        77.1309,
-        86.467
+        38.5505,
+        53.1715,
+        65.8091,
+        76.5621,
+        85.8444
       ],
-      "alpha_band_mean_db_km": 64.4681,
-      "alpha_band_mean_db_m": 0.064468,
+      "alpha_band_mean_db_km": 63.9875,
+      "alpha_band_mean_db_m": 0.063988,
       "sample_components": [
         {
           "frequency_hz": 100000.0,
           "frequency_khz": 100.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 36.3444,
+          "magnesium_sulfate_db_km": 36.0428,
           "pure_water_db_km": 2.3293,
-          "total_db_km": 38.8521,
-          "total_db_m": 0.038852
+          "total_db_km": 38.5505,
+          "total_db_m": 0.03855
         },
         {
           "frequency_hz": 130000.0,
           "frequency_khz": 130.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 49.4672,
+          "magnesium_sulfate_db_km": 49.0567,
           "pure_water_db_km": 3.9365,
-          "total_db_km": 53.5821,
-          "total_db_m": 0.053582
+          "total_db_km": 53.1715,
+          "total_db_m": 0.053172
         },
         {
           "frequency_hz": 160000.0,
           "frequency_khz": 160.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 60.167,
+          "magnesium_sulfate_db_km": 59.6677,
           "pure_water_db_km": 5.9629,
-          "total_db_km": 66.3084,
-          "total_db_m": 0.066308
+          "total_db_km": 65.8091,
+          "total_db_m": 0.065809
         },
         {
           "frequency_hz": 190000.0,
           "frequency_khz": 190.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 68.5438,
+          "magnesium_sulfate_db_km": 67.975,
           "pure_water_db_km": 8.4087,
-          "total_db_km": 77.1309,
-          "total_db_m": 0.077131
+          "total_db_km": 76.5621,
+          "total_db_m": 0.076562
         },
         {
           "frequency_hz": 220000.0,
           "frequency_khz": 220.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 75.0149,
+          "magnesium_sulfate_db_km": 74.3924,
           "pure_water_db_km": 11.2736,
-          "total_db_km": 86.467,
-          "total_db_m": 0.086467
+          "total_db_km": 85.8444,
+          "total_db_m": 0.085844
         }
       ],
-      "extinction_boundary_m": 259.38,
+      "extinction_boundary_m": 260.66,
       "viability_at_200m": true,
-      "margin_at_200m_db": -58.91
+      "margin_at_200m_db": -58.82
     },
     "BALANCED": {
       "id": 2,
@@ -138,64 +138,64 @@
         400.0
       ],
       "alpha_points_db_km": [
-        80.3855,
-        94.7531,
-        107.1754,
-        118.8315,
-        130.4326
+        79.7972,
+        94.0891,
+        106.4614,
+        118.0837,
+        129.6609
       ],
-      "alpha_band_mean_db_km": 106.3156,
-      "alpha_band_mean_db_m": 0.106316,
+      "alpha_band_mean_db_km": 105.6184,
+      "alpha_band_mean_db_m": 0.105618,
       "sample_components": [
         {
           "frequency_hz": 200000.0,
           "frequency_khz": 200.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 70.89,
+          "magnesium_sulfate_db_km": 70.3017,
           "pure_water_db_km": 9.3171,
-          "total_db_km": 80.3855,
-          "total_db_m": 0.080385
+          "total_db_km": 79.7972,
+          "total_db_m": 0.079797
         },
         {
           "frequency_hz": 250000.0,
           "frequency_khz": 250.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 80.0168,
+          "magnesium_sulfate_db_km": 79.3527,
           "pure_water_db_km": 14.5579,
-          "total_db_km": 94.7531,
-          "total_db_m": 0.094753
+          "total_db_km": 94.0891,
+          "total_db_m": 0.094089
         },
         {
           "frequency_hz": 300000.0,
           "frequency_khz": 300.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 86.0336,
+          "magnesium_sulfate_db_km": 85.3196,
           "pure_water_db_km": 20.9634,
-          "total_db_km": 107.1754,
-          "total_db_m": 0.107175
+          "total_db_km": 106.4614,
+          "total_db_m": 0.106461
         },
         {
           "frequency_hz": 350000.0,
           "frequency_khz": 350.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 90.1196,
+          "magnesium_sulfate_db_km": 89.3717,
           "pure_water_db_km": 28.5335,
-          "total_db_km": 118.8315,
-          "total_db_m": 0.118832
+          "total_db_km": 118.0837,
+          "total_db_m": 0.118084
         },
         {
           "frequency_hz": 400000.0,
           "frequency_khz": 400.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 92.9859,
+          "magnesium_sulfate_db_km": 92.2142,
           "pure_water_db_km": 37.2683,
-          "total_db_km": 130.4326,
-          "total_db_m": 0.130433
+          "total_db_km": 129.6609,
+          "total_db_m": 0.129661
         }
       ],
-      "extinction_boundary_m": 184.92,
+      "extinction_boundary_m": 185.77,
       "viability_at_200m": false,
-      "margin_at_200m_db": -67.28
+      "margin_at_200m_db": -67.14
     },
     "HIGH_FREQUENCY": {
       "id": 3,
@@ -218,64 +218,64 @@
         500.0
       ],
       "alpha_points_db_km": [
-        118.8315,
-        127.5106,
-        136.3531,
-        145.4889,
-        155.0091
+        118.0837,
+        126.7442,
+        135.5722,
+        144.6965,
+        154.2074
       ],
-      "alpha_band_mean_db_km": 136.6387,
-      "alpha_band_mean_db_m": 0.136639,
+      "alpha_band_mean_db_km": 135.8608,
+      "alpha_band_mean_db_m": 0.135861,
       "sample_components": [
         {
           "frequency_hz": 350000.0,
           "frequency_khz": 350.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 90.1196,
+          "magnesium_sulfate_db_km": 89.3717,
           "pure_water_db_km": 28.5335,
-          "total_db_km": 118.8315,
-          "total_db_m": 0.118832
+          "total_db_km": 118.0837,
+          "total_db_m": 0.118084
         },
         {
           "frequency_hz": 387500.0,
           "frequency_khz": 387.5,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 92.3568,
+          "magnesium_sulfate_db_km": 91.5904,
           "pure_water_db_km": 34.9754,
-          "total_db_km": 127.5106,
-          "total_db_m": 0.127511
+          "total_db_km": 126.7442,
+          "total_db_m": 0.126744
         },
         {
           "frequency_hz": 425000.0,
           "frequency_khz": 425.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 94.1023,
+          "magnesium_sulfate_db_km": 93.3214,
           "pure_water_db_km": 42.0724,
-          "total_db_km": 136.3531,
-          "total_db_m": 0.136353
+          "total_db_km": 135.5722,
+          "total_db_m": 0.135572
         },
         {
           "frequency_hz": 462500.0,
           "frequency_khz": 462.5,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 95.486,
+          "magnesium_sulfate_db_km": 94.6936,
           "pure_water_db_km": 49.8245,
-          "total_db_km": 145.4889,
-          "total_db_m": 0.145489
+          "total_db_km": 144.6965,
+          "total_db_m": 0.144696
         },
         {
           "frequency_hz": 500000.0,
           "frequency_khz": 500.0,
           "boric_acid_db_km": 0.1784,
-          "magnesium_sulfate_db_km": 96.599,
+          "magnesium_sulfate_db_km": 95.7973,
           "pure_water_db_km": 58.2317,
-          "total_db_km": 155.0091,
-          "total_db_m": 0.155009
+          "total_db_km": 154.2074,
+          "total_db_m": 0.154207
         }
       ],
-      "extinction_boundary_m": 155.07,
+      "extinction_boundary_m": 155.7,
       "viability_at_200m": false,
-      "margin_at_200m_db": -73.35
+      "margin_at_200m_db": -73.19
     }
   },
   "range_sweep": [
@@ -283,7 +283,7 @@
       "range_m": 10.0,
       "low_margin_db": -20.64,
       "bal_margin_db": -21.06,
-      "high_margin_db": -21.37,
+      "high_margin_db": -21.36,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -296,9 +296,9 @@
     },
     {
       "range_m": 25.0,
-      "low_margin_db": -29.57,
-      "bal_margin_db": -30.62,
-      "high_margin_db": -31.37,
+      "low_margin_db": -29.56,
+      "bal_margin_db": -30.6,
+      "high_margin_db": -31.36,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -311,9 +311,9 @@
     },
     {
       "range_m": 50.0,
-      "low_margin_db": -37.2,
-      "bal_margin_db": -39.3,
-      "high_margin_db": -40.81,
+      "low_margin_db": -37.18,
+      "bal_margin_db": -39.26,
+      "high_margin_db": -40.77,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -326,9 +326,9 @@
     },
     {
       "range_m": 75.0,
-      "low_margin_db": -42.34,
-      "bal_margin_db": -45.47,
-      "high_margin_db": -47.75,
+      "low_margin_db": -42.3,
+      "bal_margin_db": -45.42,
+      "high_margin_db": -47.69,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -341,9 +341,9 @@
     },
     {
       "range_m": 100.0,
-      "low_margin_db": -46.45,
-      "bal_margin_db": -50.63,
-      "high_margin_db": -53.66,
+      "low_margin_db": -46.4,
+      "bal_margin_db": -50.56,
+      "high_margin_db": -53.59,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -356,29 +356,29 @@
     },
     {
       "range_m": 125.0,
-      "low_margin_db": -50.0,
-      "bal_margin_db": -55.23,
-      "high_margin_db": -59.02,
+      "low_margin_db": -49.94,
+      "bal_margin_db": -55.14,
+      "high_margin_db": -58.92,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
       "survey_selected": "BALANCED",
-      "survey_viability_conf": 0.65,
+      "survey_viability_conf": 0.66,
       "survey_selection_conf": 1.0,
       "directivity_selected": "HIGH_FREQUENCY",
-      "directivity_viability_conf": 0.4,
+      "directivity_viability_conf": 0.41,
       "directivity_selection_conf": 1.0
     },
     {
       "range_m": 150.0,
-      "low_margin_db": -53.19,
-      "bal_margin_db": -59.47,
-      "high_margin_db": -64.02,
+      "low_margin_db": -53.12,
+      "bal_margin_db": -59.36,
+      "high_margin_db": -63.9,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
       "survey_selected": "BALANCED",
-      "survey_viability_conf": 0.37,
+      "survey_viability_conf": 0.38,
       "survey_selection_conf": 1.0,
       "directivity_selected": "HIGH_FREQUENCY",
       "directivity_viability_conf": 0.07,
@@ -386,24 +386,24 @@
     },
     {
       "range_m": 175.0,
-      "low_margin_db": -56.14,
-      "bal_margin_db": -63.47,
-      "high_margin_db": -68.77,
+      "low_margin_db": -56.06,
+      "bal_margin_db": -63.34,
+      "high_margin_db": -68.64,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": false,
       "survey_selected": "BALANCED",
-      "survey_viability_conf": 0.1,
+      "survey_viability_conf": 0.11,
       "survey_selection_conf": 1.0,
       "directivity_selected": "BALANCED",
-      "directivity_viability_conf": 0.1,
+      "directivity_viability_conf": 0.11,
       "directivity_selection_conf": 1.0
     },
     {
       "range_m": 200.0,
-      "low_margin_db": -58.91,
-      "bal_margin_db": -67.28,
-      "high_margin_db": -73.35,
+      "low_margin_db": -58.82,
+      "bal_margin_db": -67.14,
+      "high_margin_db": -73.19,
       "low_viable": true,
       "bal_viable": false,
       "high_viable": false,
@@ -418,9 +418,9 @@
   "noise_sweep": [
     {
       "noise_penalty_db": -20.0,
-      "low_margin_db": -22.34,
-      "bal_margin_db": -25.47,
-      "high_margin_db": -27.75,
+      "low_margin_db": -22.3,
+      "bal_margin_db": -25.42,
+      "high_margin_db": -27.69,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -428,9 +428,9 @@
     },
     {
       "noise_penalty_db": -10.0,
-      "low_margin_db": -32.34,
-      "bal_margin_db": -35.47,
-      "high_margin_db": -37.75,
+      "low_margin_db": -32.3,
+      "bal_margin_db": -35.42,
+      "high_margin_db": -37.69,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -438,9 +438,9 @@
     },
     {
       "noise_penalty_db": 0.0,
-      "low_margin_db": -42.34,
-      "bal_margin_db": -45.47,
-      "high_margin_db": -47.75,
+      "low_margin_db": -42.3,
+      "bal_margin_db": -45.42,
+      "high_margin_db": -47.69,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -448,9 +448,9 @@
     },
     {
       "noise_penalty_db": 10.0,
-      "low_margin_db": -52.34,
-      "bal_margin_db": -55.47,
-      "high_margin_db": -57.75,
+      "low_margin_db": -52.3,
+      "bal_margin_db": -55.42,
+      "high_margin_db": -57.69,
       "low_viable": true,
       "bal_viable": true,
       "high_viable": true,
@@ -458,9 +458,9 @@
     },
     {
       "noise_penalty_db": 20.0,
-      "low_margin_db": -62.34,
-      "bal_margin_db": -65.47,
-      "high_margin_db": -67.75,
+      "low_margin_db": -62.3,
+      "bal_margin_db": -65.42,
+      "high_margin_db": -67.69,
       "low_viable": true,
       "bal_viable": false,
       "high_viable": false,
@@ -468,119 +468,119 @@
     }
   ],
   "cross_validation_summary": {
-    "tolerance_pct": 1.0,
+    "tolerance_pct": 1e-06,
     "all_passed": true,
     "comparison_points": [
       {
         "frequency_khz": 100.0,
-        "production_db_km": 38.85206281758312,
+        "production_db_km": 38.55045115341257,
         "reference_db_km": 38.55045115341257,
-        "diff_db_km": 0.30161166417055085,
-        "diff_pct": 0.7823816716704016,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 130.0,
-        "production_db_km": 53.582058898223586,
+        "production_db_km": 53.17154510846162,
         "reference_db_km": 53.17154510846162,
-        "diff_db_km": 0.4105137897619642,
-        "diff_pct": 0.772055408441828,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 160.0,
-        "production_db_km": 66.3083634612679,
+        "production_db_km": 65.80905489034016,
         "reference_db_km": 65.80905489034016,
-        "diff_db_km": 0.49930857092773806,
-        "diff_pct": 0.758723205734762,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 190.0,
-        "production_db_km": 77.13088682536187,
+        "production_db_km": 76.56206174138988,
         "reference_db_km": 76.56206174138988,
-        "diff_db_km": 0.5688250839719871,
-        "diff_pct": 0.7429594645626908,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 200.0,
-        "production_db_km": 80.38547013633293,
+        "production_db_km": 79.79717488969158,
         "reference_db_km": 79.79717488969158,
-        "diff_db_km": 0.5882952466413514,
-        "diff_pct": 0.7372381885130485,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 220.0,
-        "production_db_km": 86.46696989358392,
+        "production_db_km": 85.84444319322361,
         "reference_db_km": 85.84444319322361,
-        "diff_db_km": 0.6225267003603108,
-        "diff_pct": 0.725179961804973,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 250.0,
-        "production_db_km": 94.75308818501216,
+        "production_db_km": 94.08905259046793,
         "reference_db_km": 94.08905259046793,
-        "diff_db_km": 0.6640355945442309,
-        "diff_pct": 0.7057522381849382,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 300.0,
-        "production_db_km": 107.17540079436637,
+        "production_db_km": 106.46143330457514,
         "reference_db_km": 106.46143330457514,
-        "diff_db_km": 0.71396748979123,
-        "diff_pct": 0.6706348652555174,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 350.0,
-        "production_db_km": 118.83153793199978,
+        "production_db_km": 118.08366175417886,
         "reference_db_km": 118.08366175417886,
-        "diff_db_km": 0.7478761778209133,
-        "diff_pct": 0.633344331223237,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 387.5,
-        "production_db_km": 127.51064532487433,
+        "production_db_km": 126.74420303195424,
         "reference_db_km": 126.74420303195424,
-        "diff_db_km": 0.7664422929200896,
-        "diff_pct": 0.6047158564931425,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 400.0,
-        "production_db_km": 130.4325765267372,
+        "production_db_km": 129.66091385256317,
         "reference_db_km": 129.66091385256317,
-        "diff_db_km": 0.7716626741740242,
-        "diff_pct": 0.5951390062324243,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 425.0,
-        "production_db_km": 136.35309378745183,
+        "production_db_km": 135.57216639210029,
         "reference_db_km": 135.57216639210029,
-        "diff_db_km": 0.7809273953515401,
-        "diff_pct": 0.5760233948707072,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 462.5,
-        "production_db_km": 145.48889876163636,
+        "production_db_km": 144.69648831691197,
         "reference_db_km": 144.69648831691197,
-        "diff_db_km": 0.7924104447243963,
-        "diff_pct": 0.5476362653590261,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       },
       {
         "frequency_khz": 500.0,
-        "production_db_km": 155.00907958237445,
+        "production_db_km": 154.2074327988279,
         "reference_db_km": 154.2074327988279,
-        "diff_db_km": 0.8016467835465448,
-        "diff_pct": 0.5198496395386707,
+        "diff_db_km": 0.0,
+        "diff_pct": 0.0,
         "passed": true
       }
     ]

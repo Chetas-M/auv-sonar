@@ -50,7 +50,7 @@ def independent_ainslie_mccolm_reference(
       Magnesium Sulfate (MgSO4):
         f2 = 42 * exp(T/17)  [kHz]
         A2 = 0.52 * (1 + T/43) * (S/35)  [dB/(km*kHz)]
-        P2 = exp(-D_km / 6) = exp(-depth_m / 6000)
+        P2 = exp(-D_km / 6) = exp(-depth_m / 6000)  [Hydrostatic depth factor]
         MgSO4 = (A2 * P2 * f2 * f^2) / (f2^2 + f^2)
         
       Pure Water:
@@ -105,11 +105,12 @@ def evaluate_production_components(
     A1 = 0.106 * np.exp((T - 20.0) / 27.0)
     f2 = 42.0 * np.exp(T / 17.0)
     A2 = 0.52 * (1.0 + T / 43.0) * (S / 35.0)
+    P2 = np.exp(-D / 6000.0)
     A3 = 0.00049 * np.exp(-(T / 27.0) - (D / 17000.0))
 
     f_sq = f ** 2
     boric = float((A1 * f1 * f_sq) / (f1 ** 2 + f_sq))
-    mgso4 = float((A2 * f2 * f_sq) / (f2 ** 2 + f_sq))
+    mgso4 = float((A2 * P2 * f2 * f_sq) / (f2 ** 2 + f_sq))
     pure_water = float(A3 * f_sq)
     total_db_km = float(boric + mgso4 + pure_water)
     total_db_m = total_db_km / 1000.0
@@ -134,7 +135,7 @@ def run_canonical_physics_diagnostic(
 ) -> Dict[str, Dict]:
     """
     Executes the canonical diagnostic across all 3 profiles and 5 sampling points each.
-    Prints the exact formatted report required by Phase 2.
+    Prints the formatted diagnostic report.
     """
     profiles = {
         "LOW_FREQUENCY": np.linspace(100.0, 220.0, 5),
@@ -145,7 +146,7 @@ def run_canonical_physics_diagnostic(
     results = {}
 
     print("\n" + "=" * 80)
-    print("  PHASE 2: CANONICAL UNDERWATER ACOUSTIC ABSORPTION DIAGNOSTIC")
+    print("  CANONICAL UNDERWATER ACOUSTIC ABSORPTION DIAGNOSTIC")
     print("  Model: Ainslie & McColm (1998)")
     print(f"  Environmental Baseline: T={temperature_c}°C, S={salinity_psu} PSU, D={depth_m} m, pH={pH}")
     print("=" * 80)
@@ -169,7 +170,7 @@ def run_canonical_physics_diagnostic(
             print(f"Salinity: {salinity_psu:.1f} PSU")
             print(f"Depth: {depth_m:.1f} m")
             print(f"pH: {pH:.1f}")
-            print(f"Pressure: Hydrostatic equivalent (depth D={depth_m} m)")
+            print(f"Pressure: Hydrostatic equivalent (depth D={depth_m} m, P2={np.exp(-depth_m/6000.0):.6f})")
             print(f"\nAinslie-McColm Components:")
             print(f"Boric Acid Contribution: {comp.boric_acid_db_km:.4f} dB/km")
             print(f"Magnesium Sulfate Contribution: {comp.magnesium_sulfate_db_km:.4f} dB/km")
@@ -194,7 +195,7 @@ def run_canonical_physics_diagnostic(
 
 
 def run_cross_validation_table(
-    tolerance_pct: float = 1.0,
+    tolerance_pct: float = 1e-6,
     temperature_c: float = 20.0,
     salinity_psu: float = 35.0,
     depth_m: float = 50.0,
@@ -202,7 +203,7 @@ def run_cross_validation_table(
 ) -> List[Dict]:
     """
     Compares production implementation against independent reference implementation.
-    Documents difference and evaluates pass/fail within tolerance.
+    Documents difference and evaluates pass/fail within strict numerical tolerance.
     """
     profiles = {
         "LOW_FREQUENCY": np.linspace(100.0, 220.0, 5),
@@ -220,10 +221,10 @@ def run_cross_validation_table(
     table_data = []
 
     print("\n" + "=" * 95)
-    print("  PHASE 4: INDEPENDENT CROSS-VALIDATION TABLE")
+    print("  INDEPENDENT CROSS-VALIDATION TABLE (NUMERICAL PRECISION)")
     print("  Production: src/profile_evaluator.py::ainslie_mccolm_absorption")
     print("  Reference:  src/physics_reference.py::independent_ainslie_mccolm_reference")
-    print(f"  Tolerance:  {tolerance_pct:.1f}% relative difference")
+    print(f"  Numerical Tolerance: {tolerance_pct:.1e}% relative difference")
     print("=" * 95)
     print(f"{'Frequency (kHz)':<16} | {'Production (dB/km)':<20} | {'Reference (dB/km)':<20} | {'Diff (dB/km)':<14} | {'Diff (%)':<10} | {'Status':<6}")
     print("-" * 95)
@@ -237,7 +238,7 @@ def run_cross_validation_table(
         passed = pct_diff <= tolerance_pct
 
         status = "PASS" if passed else "FAIL"
-        print(f"{f_k:<16.1f} | {prod_val:<20.4f} | {ref_val:<20.4f} | {abs_diff:<14.4f} | {pct_diff:<10.2f} | {status:<6}")
+        print(f"{f_k:<16.1f} | {prod_val:<20.6f} | {ref_val:<20.6f} | {abs_diff:<14.2e} | {pct_diff:<10.2e} | {status:<6}")
 
         table_data.append({
             "frequency_khz": f_k,
@@ -250,10 +251,54 @@ def run_cross_validation_table(
 
     print("-" * 95)
     all_passed = all(row["passed"] for row in table_data)
-    print(f"Summary: {'ALL FREQUENCIES PASSED within ' + str(tolerance_pct) + '% tolerance.' if all_passed else 'SOME CHECKS FAILED'}")
-    print("Note: The minor (<0.8%) difference is due to the literature hydrostatic depth factor exp(-D/6000) in MgSO4,")
-    print("      which reduces absorption by 0.83% at D=50m depth.")
+    print(f"Summary: {'ALL FREQUENCIES PASSED with machine precision parity.' if all_passed else 'SOME CHECKS FAILED'}")
     return table_data
+
+
+def run_depth_sweep_matrix(
+    depths: List[float] = [10.0, 50.0, 100.0, 200.0, 300.0],
+    temperature_c: float = 20.0,
+    salinity_psu: float = 35.0,
+    pH: float = 8.0,
+) -> Dict[str, List[Dict]]:
+    """
+    Computes before vs after and production vs reference across the full operational depth envelope.
+    """
+    profiles = {
+        "LOW_FREQUENCY": np.linspace(100.0, 220.0, 5),
+        "BALANCED": np.linspace(200.0, 400.0, 5),
+        "HIGH_FREQUENCY": np.linspace(350.0, 500.0, 5),
+    }
+
+    depth_data = {}
+    for prof_name, freqs in profiles.items():
+        depth_data[prof_name] = []
+        for d in depths:
+            p2 = math.exp(-d / 6000.0)
+            prod_alphas = [production_absorption(f, temperature_c, salinity_psu, d) for f in freqs]
+            ref_alphas = [independent_ainslie_mccolm_reference(f, temperature_c, salinity_psu, d, pH)[3] for f in freqs]
+            
+            prod_mean = float(np.mean(prod_alphas))
+            ref_mean = float(np.mean(ref_alphas))
+            abs_diff = abs(prod_mean - ref_mean)
+            rel_diff_pct = (abs_diff / ref_mean) * 100.0 if ref_mean > 0 else 0.0
+            
+            # Transmission loss at R=50m and R=200m
+            tl_50 = 20.0 * math.log10(50.0) + prod_mean * 0.05
+            tl_200 = 20.0 * math.log10(200.0) + prod_mean * 0.20
+
+            depth_data[prof_name].append({
+                "depth_m": d,
+                "p2_factor": p2,
+                "p2_reduction_pct": (1.0 - p2) * 100.0,
+                "production_mean_db_km": prod_mean,
+                "reference_mean_db_km": ref_mean,
+                "abs_diff_db_km": abs_diff,
+                "rel_diff_pct": rel_diff_pct,
+                "tl_50m_db": tl_50,
+                "tl_200m_db": tl_200,
+            })
+    return depth_data
 
 
 if __name__ == "__main__":

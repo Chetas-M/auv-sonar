@@ -96,27 +96,28 @@ def build_sections_13_to_18(doc, helpers):
 
     # Group 6
     v_low = canonical["viability_boundaries"]["LOW_FREQUENCY"]
-    add_h2(doc, "13.6 Group 6 — Physics Regression & Independent Reference Parity Tests (8 Tests)")
+    add_h2(doc, "13.6 Group 6 — Physics Regression & Hydrostatic Parity Tests (9 Tests)")
     add_body(doc,
-        "Includes `test_frequency_unit_scaling_hz_vs_khz`, `test_attenuation_unit_scaling_db_km_vs_db_m`, "
-        "`test_independent_reference_parity_within_tolerance`, `test_canonical_profile_mean_values`, "
-        "`test_attenuation_strictly_monotonic_with_frequency`, `test_profile_viability_ranges_and_margins`, "
-        "`test_low_frequency_operability_at_200m_and_extinction_boundary`, and `test_canonical_results_json_schema_and_content`."
+        "Includes `test_01_frequency_unit_conversion_correctness`, `test_02_distance_and_attenuation_units`, "
+        "`test_03_implementation_parity_matrix` (Validation A: machine precision across 10m-300m depth envelope), "
+        "`test_04_p2_hydrostatic_depth_regression` (Validation B: P2 = exp(-D/6000) analytical and monotonicity protection), "
+        "`test_05_canonical_profile_mean_attenuation`, `test_06_profile_ordering_sanity`, "
+        "`test_07_viability_boundaries`, `test_08_environmental_speed_of_sound_consistency`, and `test_09_canonical_json_artifact_integrity`."
     )
-    add_bullet(doc, "Failure Scenario: ", "Frequency unit mismatch (e.g. kHz passed into Hz equation or vice-versa), dB/km vs dB/m dimensional scaling errors, divergence between production physics and an independently formulated reference implementation (> 1.0% tolerance), non-monotonic attenuation curves, or drift in canonical profile attenuation values and operational viability boundaries.")
-    add_bullet(doc, "What a Passing Result Proves: ", f"Proves that the production Ainslie-McColm absorption implementation rigorously matches an independent reference implementation to within 0.8% (well inside the 1.0% limit); confirms dimensional consistency (dB/km / 1000 = dB/m); validates that LOW_FREQUENCY remains viable at 200 m ({v_low['margin_at_tested_max_db']:.2f} dB margin, +{v_low['headroom_above_threshold_db']:.2f} dB headroom) with theoretical extinction at {v_low['rounded_extinction_boundary_m']:.1f} m; and verifies that the canonical results artifact outputs/canonical_profile_results.json is structurally intact and fully synchronized.")
+    add_bullet(doc, "Failure Scenario: ", "Frequency unit mismatch (e.g. kHz passed into Hz equation or vice-versa), dB/km vs dB/m dimensional scaling errors, omission of P2 hydrostatic depth factor on MgSO4, divergence between production physics and an independently formulated reference implementation (> 1e-10 relative error), non-monotonic attenuation curves, or drift in canonical profile attenuation values and operational viability boundaries.")
+    add_bullet(doc, "What a Passing Result Proves: ", f"Proves that the production Ainslie-McColm absorption implementation rigorously matches an independent reference implementation to numerical precision (< 1e-10 relative error) across the validated 10m to 300m depth operating matrix; confirms P2 = exp(-D/6000) hydrostatic pressure correction on MgSO4; confirms dimensional consistency (dB/km / 1000 = dB/m); validates that LOW_FREQUENCY remains viable at 200 m ({v_low['margin_at_tested_max_db']:.2f} dB margin, +{v_low['headroom_above_threshold_db']:.2f} dB headroom) with theoretical extinction at {v_low['rounded_extinction_boundary_m']:.1f} m; and verifies that the canonical results artifact outputs/canonical_profile_results.json is structurally intact and fully synchronized.")
     add_bullet(doc, "What a Passing Result Does NOT Prove: ", "Does not prove that empirical ocean field measurements will match Ainslie-McColm theoretical predictions under non-standard salinity anomalies or severe sediment suspension.")
 
     add_callout(doc,
         tag="IMPORTANT",
         title="Final Test Verification Summary",
-        body="Total Automated Tests: 99 validation checks across suites\n"
-             "  • Python Suite: 64 passed, 0 failed (56 baseline + 8 physics regression tests)\n"
+        body="Total Automated Tests: 101 validation checks across suites\n"
+             "  • Python Suite: 66 passed, 0 failed (56 baseline + 9 physics regression + 1 MATLAB P2 parity test)\n"
              "  • MATLAB DSP Validation Suite: 23 passed, 0 failed\n"
              "  • MATLAB Priority-1 Feature Suite: 12 passed, 0 failed\n"
              "Overall Execution Status: 100% passing across all platforms\n"
-             "Python Execution Runtime: 1.99 seconds via pytest\n"
-             "Independent Physics Parity: Verified within 0.8% error (< 1.0% tolerance).",
+             "Python Execution Runtime: ~1.5 seconds via unittest / pytest\n"
+             "Independent Physics Parity: Verified to machine precision (< 1e-10 relative error across 10m–300m depth envelope).",
         callout_type="IMPORTANT"
     )
 

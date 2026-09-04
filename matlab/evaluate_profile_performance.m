@@ -74,14 +74,16 @@ function [all_metrics, decision] = evaluate_profile_performance(range_m, env_inp
         for i = 1:5
             f_k = f_pts_khz(i);
             % Ainslie & McColm (1998) chemical relaxation absorption (dB/km)
+            % Includes hydrostatic pressure reduction factor P2 = exp(-D_km / 6) = exp(-D / 6000.0)
             f1 = 0.78 * sqrt(S / 35.0) * exp(T / 26.0);
             A1 = 0.106 * exp((T - 20.0) / 27.0);
             f2 = 42.0 * exp(T / 17.0);
             A2 = 0.52 * (1.0 + T / 43.0) * (S / 35.0);
+            P2 = exp(-D / 6000.0);
             A3 = 0.00049 * exp(-(T / 27.0) - (D / 17000.0));
             
             alpha_chem = (A1 * f1 * (f_k^2)) / (f1^2 + f_k^2) + ...
-                         (A2 * f2 * (f_k^2)) / (f2^2 + f_k^2) + ...
+                         (A2 * P2 * f2 * (f_k^2)) / (f2^2 + f_k^2) + ...
                          A3 * (f_k^2);
 
             % Optional scenario sensitivity heuristic for turbidity scattering
