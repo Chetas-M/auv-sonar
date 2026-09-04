@@ -1,13 +1,111 @@
 # AUV Low-Power Adaptive Software-Defined Sonar Transmitter Digital Twin
 
-A Python- and MATLAB-based engineering digital twin simulator for the transmitter payload of a low-power adaptive software-defined sonar designed for Autonomous Underwater Vehicles (AUVs), implementing **SIH Problem 26058**.
+A Python- and MATLAB-based engineering digital twin simulator and STM32G474 firmware prototype for the transmitter payload of a low-power adaptive software-defined sonar designed for Autonomous Underwater Vehicles (AUVs), implementing **SIH Problem 26058**.
 
-This simulator models the pre-silicon signal synthesis, adaptive channel decision logic, and DMA memory architecture targeted for the **STMicroelectronics STM32G474** (170 MHz ARM Cortex-M4F with high-speed DAC and DMA).
+Target Microcontroller: **STMicroelectronics STM32G474RET6** (ARM Cortex-M4F @ 160.0 MHz)  
+Hardware DAC Rate: **4.0 MSPS (12-bit unsigned)** | Ping Repetition: **50 Hz (20.0 ms PRI, 10% Duty Cycle)**  
+Automated Tests: **79 / 79 Passing in Pytest (100%)** | Parity: **Bit-Exact Firmware & Machine-Precision Physics**
 
 ---
 
+## ⚡ 60-Second Quickstart
+
+Get the full digital twin running in under a minute:
+
+```bash
+# 1. Clone & Set Up Python Environment
+git clone https://github.com/Chetas-M/auv-sonar.git
+cd auv-sonar
+python -m venv .venv
+.venv\Scripts\activate       # On Linux / macOS: source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Run the Full Automated Test Suite (79 Tests Passing)
+pytest -v
+
+# 3. Run Python Simulation & Priority 1 Experiments
+python src/main.py
+python -m src.experiments
+
+# 4. Run MATLAB Digital Twin Mirror (No MATLAB License Required)
+python matlab/generate_matlab_results.py
+
+# 5. Verify & Compile STM32G474 Firmware (Host Build)
+cd firmware
+mingw32-make host            # On Linux / macOS: make host
+cd ..
+
+# 6. Generate Master Engineering Word Reports (Optional)
+python generate_report_docx.py
+python generate_results_report.py
+```
+
+---
+
+## 🧭 Repository Map & Submodule Guides
+
+```text
+d:\AUV sonar\
+├── src/                                  # Primary Python Digital Twin implementation
+│   ├── config.py                         # Single source of truth for locked parameters
+│   ├── profiles.py                       # Canonical acoustic profile definitions
+│   ├── waveform.py                       # LFM chirp synthesis, Hann window, 12-bit DAC model
+│   ├── profile_evaluator.py              # 5-point Ainslie-McColm absorption & mission selector
+│   ├── physics_reference.py              # Reference acoustic models (Ainslie, Mackenzie, P2)
+│   ├── adaptation.py                     # Schmitt-trigger hysteresis & N=2 debounce state machine
+│   ├── power_model.py                    # Duty-cycle average power & battery endurance model
+│   ├── export_c.py                       # C99 header & LUT exporter for STM32 firmware
+│   ├── experiments.py                    # Priority 1 parameter sweeps (Exp 1 to 7)
+│   ├── validation.py                     # 23-point DSP/waveform verification suite
+│   ├── main.py                           # Master CLI pipeline runner
+│   └── README.md                         # Detailed Python architecture guide
+├── tests/                                # Automated verification & regression test suites
+│   ├── test_simulator.py                 # Comprehensive 23-point hardware & DSP tests (36 tests)
+│   ├── test_profile_evaluation.py        # Priority 1 profile evaluation tests (12 tests)
+│   ├── test_physics_regression.py        # Acoustic physics & hydrostatic P2 tests (9 tests)
+│   ├── test_matlab_parity.py             # Cross-platform Python/MATLAB parity tests (9 tests)
+│   ├── test_firmware_lut_parity.py       # Bit-exact C header LUT parity tests (13 tests)
+│   └── README.md                         # Test architecture & assertion matrix
+├── firmware/                             # STM32G474 C11 embedded transmitter firmware
+│   ├── Inc/ & Src/                       # Low-power bare-metal source (Clock, DAC, OPAMP, DMA, TIM)
+│   ├── Makefile                          # Dual host-verification & ARM cross-compilation build
+│   ├── hardware_bringup_checklist.md     # 8-step lab oscilloscope & DMM bring-up protocol
+│   ├── stm32g4_dac_feasibility_audit.md  # Official 30KB hardware & datasheet feasibility audit
+│   └── README.md                         # Embedded firmware architecture & flashing guide
+├── matlab/                               # Standalone MATLAB digital twin mirror
+│   ├── config_sonar.m                    # Configuration mirror
+│   ├── evaluate_profile_performance.m    # Priority 1 evaluation engine mirror
+│   ├── run_simulation.m                  # Master simulation runner (generates Figures 1–13)
+│   ├── run_experiments.m                 # Priority 1 experiments (generates Figures 14–20)
+│   ├── run_validation_suite.m            # 23-point MATLAB verification suite
+│   ├── run_profile_evaluation_tests.m    # 12-point MATLAB profile evaluation suite
+│   ├── adaptive_sonar_dashboard.m        # Interactive MATLAB GUI dashboard
+│   ├── generate_matlab_results.py        # Headless Python mirror to run MATLAB pipeline
+│   └── README.md                         # MATLAB digital twin documentation
+├── outputs/                              # Python simulation outputs (plots, headers, canonical JSON)
+├── outputs_matlab/                       # MATLAB mirror outputs (20 engineering plots, C headers)
+├── walkthrough.md                        # High-level technical walkthrough & verification data
+├── generate_report_docx.py               # Generates 70-page Digital Twin Engineering Report
+├── generate_results_report.py            # Generates Complete Results Interpretation Report
+└── requirements.txt                      # Python dependencies (numpy, scipy, matplotlib, pytest, docx)
+```
+
+| Component | Detailed Documentation | Primary Role |
+|---|---|---|
+| **Python Digital Twin** | [src/README.md](file:///d:/AUV%20sonar/src/README.md) | Pre-silicon signal synthesis, Ainslie-McColm absorption, adaptation logic, and power bounds |
+| **Verification Suites** | [tests/README.md](file:///d:/AUV%20sonar/tests/README.md) | 79 automated tests validating DSP, math parity, hydrostatic pressure, and bit-exact C headers |
+| **STM32 Firmware** | [firmware/README.md](file:///d:/AUV%20sonar/firmware/README.md) | 160 MHz bare-metal C11 firmware with TIM2 TRGO, DAC3+OPAMP3 follower, and DMA1 streaming |
+| **Bring-Up Checklist** | [hardware_bringup_checklist.md](file:///d:/AUV%20sonar/firmware/hardware_bringup_checklist.md) | Oscilloscope, DMM, and probe spring protocol for physical bench verification |
+| **Feasibility Audit** | [stm32g4_dac_feasibility_audit.md](file:///d:/AUV%20sonar/firmware/stm32g4_dac_feasibility_audit.md) | Datasheet analysis proving 4.0 MSPS DAC update feasibility and internal OPAMP follower routing |
+| **MATLAB Twin Mirror**| [matlab/README.md](file:///d:/AUV%20sonar/matlab/README.md) | Full MATLAB simulation mirror, parameter sweeps, validation suites, and interactive GUI dashboard |
+| **Engineering Walkthrough** | [walkthrough.md](file:///d:/AUV%20sonar/walkthrough.md) | Comprehensive engineering summary, SQNR analysis, duty-cycle power table, and results |
+
+---
+
+## 🔬 Core Engineering Scope & Boundary Statement
+
 > [!IMPORTANT]
-> **Core Project Narrative & Engineering Scope Statement**:
+> **Engineering Scope & Model Limitations**:
 > We built and validated a digital twin of an adaptive sonar transmitter waveform pipeline. The simulation evaluates frequency-dependent propagation using established absorption equations and compares three predefined LFM profiles under explicit environmental and mission assumptions. A two-tier policy first rejects profiles that fail a defined relative propagation criterion and then selects among viable profiles based on the simulated mission objective: resolution, directivity, or long-range robustness.
 >
 > This simulator models the **transmitter payload pipeline**:
@@ -32,27 +130,10 @@ Simulation correctness level: algorithmically credible, physically unverified.
 ================================================================================
 ```
 
----
+### What This Simulator Proves vs What It Does Not Prove
 
-## 1. Engineering Scope & Constraints
-
-> [!IMPORTANT]
-> **Payload-Only Scope**:
-> - This project models **only the adaptive transmitter payload pipeline** (analog potentiometer acquisition $\to$ discrete threshold adaptation $\to$ LFM chirp synthesis $\to$ 12-bit DAC quantization $\to$ DMA memory mapping $\to$ duty-cycle power estimation).
-> - It is **NOT** a full sonar imaging system, bathymetric scanner, side-scan processor, or beamformer. Receiver processing (hydrophone front-ends, match-filtering, Doppler estimation) is outside the scope of this transmitter model.
-
-> [!WARNING]
-> **Input Emulation vs Real Sensors**:
-> - For **v1 hardware**, the 3 environmental controls (turbidity, range/depth, and target reflectivity) are emulated via **three precision potentiometers** connected to STM32 12-bit ADC channels.
-> - **Target-strength input emulates a future receiver/SNR feedback signal**; without a receiver/hydrophone path, the system cannot know whether a real target is strong or weak.
-> - Do not claim or infer optical turbidity, nephelometric turbidity units (NTU), or CTD salinity measurement unless physical subsea oceanographic sensors are integrated in future revisions.
-
----
-
-## 2. What This Simulator Proves vs What It Does Not Prove
-
-### What This Simulator Proves
-1. **Algorithmic Correctness**: Validates exact phase-integrated Linear Frequency Modulation (LFM) synthesis across all 3 canonical operational bands (`LOW_FREQUENCY`: 100–220 kHz, `BALANCED`: 200–400 kHz, `HIGH_FREQUENCY`: 350–500 kHz).
+#### Proved by Simulation & Testbench:
+1. **Algorithmic Correctness**: Validates exact phase-integrated LFM chirp synthesis across all 3 canonical operational bands (`LOW_FREQUENCY`: 100–220 kHz, `BALANCED`: 200–400 kHz, `HIGH_FREQUENCY`: 350–500 kHz).
 2. **Spectral Discontinuity Mitigation**: Confirms that applying a Hann window reduces start/end edge discontinuities and attenuates out-of-band spectral sidelobes in discrete simulation; physical analog harmonic rejection must be validated on bench scope/FFT.
 3. **DAC Quantization Modeling**: Proves that a 12-bit unsigned DAC running at $4.0\text{ MSPS}$ yields $\sim 69.7\text{ dB}$ simulated SQNR, maintaining quantization error strictly within $\pm 0.5\text{ LSB}$ ($\pm 0.403\text{ mV}$ at $3.3\text{V}$ reference).
 4. **Memory Allocation on STM32G4**: Verifies that a $2.0\text{ ms}$ pulse at $4\text{ MSPS}$ requires exactly **8,000 samples** ($16.0\text{ KB}$ as `uint16_t`). The generated waveform LUTs occupy approximately $48\text{ KB}$ before firmware and other memory allocations; individual active DMA buffers require approximately $16\text{ KB}$.
@@ -61,16 +142,15 @@ Simulation correctness level: algorithmically credible, physically unverified.
 7. **Ping-Boundary Profile Latching**: Demonstrates that transmitter profile switches occur strictly at ping repetition boundaries, designed to be compatible with DMA transfer-complete synchronization to prevent mid-pulse phase jumps.
 8. **Architectural Duty-Cycle Power Bounds**: Demonstrates that operating at a $10\%$ duty cycle ($2\text{ ms}$ pulse, $20\text{ ms}$ PRI) throttles average transmitter electrical power to $\sim 0.54\text{ W}$. For the modeled transmitter payload load alone against a hypothetical $99\text{ Wh}$ pack, this corresponds to $\sim 183\text{ hours}$ of operation. **Note: This does NOT represent full AUV mission endurance**, as the complete vehicle requires substantial power for thruster propulsion, navigation computers, INS/DVL, cameras, and acoustic communications.
 
-### What This Simulator Does Not Prove
-- **Piezoelectric Transducer Impedance**: Does not simulate the complex electrical impedance, electromechanical coupling coefficient ($k_t$), or Butterworth-Van Dyke (BVD) resonant response of the physical ceramic transducer.
-- **Analog Front-End & Settling**: Does not simulate analog DAC buffer settling time, amplifier slew rate, crossover distortion, or power amplifier thermal efficiency.
-- **High-Speed DAC Bring-Up**: At $4.0\text{ MSPS}$, the exact STM32G4 high-speed DAC channel configuration, output buffer bypass, and external op-amp reconstruction filtering must be verified on hardware.
-- **Underwater Acoustic Propagation**: Does not simulate seawater volume attenuation, multipath surface/bottom reflections, thermoclines, or acoustic reverberation.
-- **Bench Power Consumption**: Power metrics are analytical engineering models, not empirical bench multimeter measurements.
+#### Not Proved (Hardware / Field Dependent):
+- **Transducer Resonance**: Does not simulate piezoelectric ceramic impedance, electromechanical coupling ($k_t$), or Butterworth-Van Dyke (BVD) equivalent circuit.
+- **Analog Settling & Slew Rate**: Does not simulate analog DAC buffer settling time, amplifier slew rate, crossover distortion, or power amplifier thermal dissipation.
+- **Ocean Channel Physics**: Does not simulate multipath acoustic scattering, thermocline refraction, or ambient ocean noise.
+- **Bench Power Draw**: Power figures are analytical engineering models, not empirical multimeter measurements.
 
 ---
 
-## 3. Parameter Taxonomy (Single Source of Truth)
+## 📐 Single Source of Truth: Parameter Taxonomy
 
 Every parameter across both Python and MATLAB implementations is categorized into one of five distinct classes:
 
@@ -84,9 +164,9 @@ Every parameter across both Python and MATLAB implementations is categorized int
 
 ---
 
-## 4. Three Canonical Transmission Profiles
+## 📡 Three Canonical Transmission Profiles
 
-```
+```text
       Profile 1: LOW_FREQUENCY          Profile 2: BALANCED             Profile 3: HIGH_FREQUENCY
       (Long-Range / Degraded Channel)   (Default Operating Mode)        (Narrow-Beam Directivity Mode)
   [======== 100 - 220 kHz ========]   [======== 200 - 400 kHz ========]   [======== 350 - 500 kHz ========]
@@ -109,22 +189,24 @@ Every parameter across both Python and MATLAB implementations is categorized int
 
 ---
 
-## 5. Automated Engineering Validation (66 Tests Passed in Python, 101 Total)
+## 🧪 Automated Engineering Verification Suite
 
-The repository contains automated validation test suites in both MATLAB and Python verifying all 23 locked implementation requirements, 12 Priority 1 profile evaluation checks, 9 physics regression & hydrostatic parity tests, and cross-platform architecture alignment:
+The repository contains 79 automated unit tests in Python (100% passing) and 35 tests in MATLAB verifying all 23 locked implementation requirements, 12 Priority 1 profile evaluation checks, 9 physics regression & hydrostatic parity tests, and cross-platform architecture alignment:
 
-- **23 Hardware & Signal Validation Tests** (`matlab/run_validation_suite.m` & `tests/test_simulator.py`):
-  - Sample count ($8,000$), pulse duration ($2.0\text{ ms}$), chirp slope ($100\text{ MHz/s}$), start/end frequency, no NaN/Inf, Hann tapering, 12-bit DAC codes, midscale code ($2048$), SQNR ($69.7\text{ dB}$), hysteresis deadbands, debounce persistence ($N=2$), ping-boundary latching, and bit-exact C header export round-trip.
-- **12 Priority 1 Profile Evaluation Tests** (`matlab/run_profile_evaluation_tests.m` & `tests/test_profile_evaluation.py`):
-  - 5-point discrete frequency evaluation across band, positive finite attenuation, monotonic transmission loss with range, baseline attenuation ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), bandwidth-based range resolution verification ($\Delta R = 3.75\text{ mm}$ best), relative directivity ordering ($\text{HIGH} > \text{BALANCED} > \text{LOW}$), band confinement of evaluation points, long-range viability fallback to `LOW_FREQUENCY`, Survey Mode selection of `BALANCED`, Directivity Mode selection of `HIGH_FREQUENCY`, and bit-exact determinism.
-- **9 Physics Regression & Hydrostatic Parity Tests** (`tests/test_physics_regression.py` & `tests/test_matlab_parity.py`):
-  - Unit scaling (Hz vs kHz, dB/km vs dB/m), machine-precision implementation parity ($<10^{-10}$ relative error) against independent literature formulations across $10\text{--}300\text{ m}$ depth envelope, analytical validation and monotonicity of the $P_2 = \exp(-D/6000)$ hydrostatic pressure factor on $\text{MgSO}_4$, canonical baseline attenuation constants ($63.99, 105.62, 135.86\text{ dB/km}$), viability extinction boundaries ($155.7\text{ m}, 185.8\text{ m}, 260.7\text{ m}$), and canonical JSON artifact integrity.
+| Test Module | Test Method Count | Status | Key Subsystem Verified |
+|---|:---:|:---:|---|
+| **[`tests/test_simulator.py`](file:///d:/AUV%20sonar/tests/test_simulator.py)** | **36** | **PASSED** | 23 locked requirements ($8,000$ samples, $2.0\text{ ms}$, slope $100\text{ MHz/s}$, Hann tapering, 12-bit DAC bounds, $2048$ midscale, SQNR $\ge 69.5\text{ dB}$, deadbands, $N=2$ debounce, ping boundary latching, C header round-trip) |
+| **[`tests/test_profile_evaluation.py`](file:///d:/AUV%20sonar/tests/test_profile_evaluation.py)** | **12** | **PASSED** | 5-point discrete frequency evaluation, positive finite attenuation, monotonic transmission loss with range, baseline attenuation ordering, range resolution vs directivity trade-off, survey/directivity mode selection |
+| **[`tests/test_physics_regression.py`](file:///d:/AUV%20sonar/tests/test_physics_regression.py)** | **9** | **PASSED** | Seawater absorption parity against reference literature ($<10^{-10}$ error), $P_2 = \exp(-D/6000)$ hydrostatic scaling, canonical baseline constants ($63.99, 105.62, 135.86\text{ dB/km}$), extinction boundaries |
+| **[`tests/test_matlab_parity.py`](file:///d:/AUV%20sonar/tests/test_matlab_parity.py)** | **9** | **PASSED** | Parity of all 18 MATLAB `.m` files with Python implementations across equations, constants, and plot counts |
+| **[`tests/test_firmware_lut_parity.py`](file:///d:/AUV%20sonar/tests/test_firmware_lut_parity.py)** | **13** | **PASSED** | **Bit-exact identity** ($0\text{ LSB}$ max error) between Python generated waveforms and C firmware headers in `outputs/headers/*.h` |
+| **Total Automated Tests** | **79** | **100% PASS** | **Complete pre-silicon digital twin validation** |
 
 ---
 
-## 6. Generated Visualizations (20 Engineering Figures)
+## 📊 Catalog of Generated Visualizations (20 Engineering Figures)
 
-All 20 engineering figures are generated into `outputs_matlab/plots/`:
+All 20 engineering figures are generated into `outputs_matlab/plots/` and `outputs/plots/`:
 
 ### Baseline Waveform & Controller Figures (1–13)
 1. `01_time_domain_waveform.png`: Time-domain waveforms for all 3 profiles showing Hann window tapering.
@@ -152,28 +234,14 @@ All 20 engineering figures are generated into `outputs_matlab/plots/`:
 
 ---
 
-## 7. Execution Commands
+## ⚙️ Hardware Architecture & Pinout Summary
 
-### Running Python Pipeline & Experiments
-```bash
-python src/main.py
-python -m src.experiments
-```
+Target development platform: **STMicroelectronics NUCLEO-G474RE**
 
-### Running Complete Python Test Suite (56 Tests)
-```bash
-python -m unittest discover -s tests -p "test_*.py" -v
-```
+- **SYSCLK:** $160.000\text{ MHz}$ via PLL from $8.0\text{ MHz}$ ST-LINK MCO ($\text{PLLM}=1, \text{PLLN}=40, \text{PLLR}=2$).
+- **Trigger Rate:** TIM2 TRGO at **$4,000,000.00\text{ Hz}$ with $0.000\%$ frequency error** ($\text{PSC}=0, \text{ARR}=39$).
+- **DAC Routing:** Internal 15 MSPS **DAC3 Channel 2** routed on-chip directly to **OPAMP3** in High-Speed Follower mode ($45\text{ V}/\mu\text{s}$ slew rate) out to pin **PB1** (Morpho `CN10 Pin 24`). The slow internal 1 MSPS DAC buffer is explicitly bypassed.
+- **DMA Streaming:** DMA1 Channel 1 (DMAMUX Request ID 103) streams 8,000 half-words per chirp directly from Flash to `DAC3->DHR12R2` at $8.0\text{ MB/s}$ throughput ($1.18\%$ AHB bus utilization).
+- **Profile Latching:** Asynchronous candidate profile switches latch atomically at ping boundaries ($50\text{ Hz}$ PRI, $20.0\text{ ms}$) inside the DMA Transfer-Complete ISR.
 
-### Running MATLAB Simulation, Experiments, and Tests
-```bash
-# In Python execution mirror:
-python matlab/generate_matlab_results.py
-
-# In MATLAB interactive prompt:
-cd matlab
-run_simulation;
-run_experiments;
-run_validation_suite;
-run_profile_evaluation_tests;
-```
+For step-by-step physical bring-up procedures, consult [hardware_bringup_checklist.md](file:///d:/AUV%20sonar/firmware/hardware_bringup_checklist.md).
