@@ -22,7 +22,7 @@ function [all_metrics, decision] = evaluate_profile_performance(range_m, env_inp
     end
     if nargin < 2 || isempty(env_inputs)
         env_inputs = struct('depth_m', 50.0, 'temperature_c', 20.0, ...
-                            'salinity_psu', 35.0, 'turbidity', 0.0, 'noise_penalty_db', 0.0);
+                            'salinity_psu', 35.0, 'pH', 8.0, 'turbidity', 0.0, 'noise_penalty_db', 0.0);
     end
     if nargin < 1 || isempty(range_m)
         range_m = 50.0;
@@ -33,6 +33,11 @@ function [all_metrics, decision] = evaluate_profile_performance(range_m, env_inp
     T = max(-2.0, min(40.0, env_inputs.temperature_c));
     S = max(0.0, min(45.0, env_inputs.salinity_psu));
     turb = max(0.0, min(100.0, env_inputs.turbidity));
+    if isfield(env_inputs, 'pH')
+        pH = env_inputs.pH;
+    else
+        pH = 8.0;
+    end
 
     % Extract noise penalty (support both noise_penalty_db and legacy ambient_noise_db)
     if isfield(env_inputs, 'noise_penalty_db')
@@ -76,7 +81,7 @@ function [all_metrics, decision] = evaluate_profile_performance(range_m, env_inp
             % Ainslie & McColm (1998) chemical relaxation absorption (dB/km)
             % Includes hydrostatic pressure reduction factor P2 = exp(-D_km / 6) = exp(-D / 6000.0)
             f1 = 0.78 * sqrt(S / 35.0) * exp(T / 26.0);
-            A1 = 0.106 * exp((T - 20.0) / 27.0);
+            A1 = 0.106 * exp((pH - 8.0) / 0.56);
             f2 = 42.0 * exp(T / 17.0);
             A2 = 0.52 * (1.0 + T / 43.0) * (S / 35.0);
             P2 = exp(-D / 6000.0);
