@@ -84,6 +84,8 @@ d:\AUV sonar\
 │   └── README.md                         # MATLAB digital twin documentation
 ├── outputs/                              # Python simulation outputs (plots, headers, canonical JSON)
 ├── outputs_matlab/                       # MATLAB mirror outputs (20 engineering plots, C headers)
+├── REPOSITORY_CONTEXT.md                 # Authoritative master context & architecture manual
+├── AGENTS.md                             # Quick briefing and guidelines for AI agents & models
 ├── walkthrough.md                        # High-level technical walkthrough & verification data
 ├── generate_report_docx.py               # Generates 70-page Digital Twin Engineering Report
 ├── generate_results_report.py            # Generates Complete Results Interpretation Report
@@ -92,6 +94,8 @@ d:\AUV sonar\
 
 | Component | Detailed Documentation | Primary Role |
 |---|---|---|
+| **Master Architecture** | [REPOSITORY_CONTEXT.md](file:///d:/AUV%20sonar/REPOSITORY_CONTEXT.md) | Authoritative single-source-of-truth system context for engineers and AI models |
+| **Agent Guidelines** | [AGENTS.md](file:///d:/AUV%20sonar/AGENTS.md) | Quick briefing, golden engineering rules, and constraints for AI agents |
 | **Python Digital Twin** | [src/README.md](file:///d:/AUV%20sonar/src/README.md) | Pre-silicon signal synthesis, Ainslie-McColm absorption, adaptation logic, and power bounds |
 | **Verification Suites** | [tests/README.md](file:///d:/AUV%20sonar/tests/README.md) | 79 automated tests validating DSP, math parity, hydrostatic pressure, and bit-exact C headers |
 | **STM32 Firmware** | [firmware/README.md](file:///d:/AUV%20sonar/firmware/README.md) | 160 MHz bare-metal C11 firmware with TIM2 TRGO, DAC3+OPAMP3 follower, and DMA1 streaming |
