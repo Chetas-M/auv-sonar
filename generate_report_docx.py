@@ -462,6 +462,9 @@ def generate_master_engineering_report():
         build_chapter_18_automated_validation,
         build_chapter_19_python_matlab_parity,
     )
+    from src.canonical_data import get_canonical_results
+    get_canonical_results()
+
     from report_sections_part4 import (
         build_chapter_20_verified_claims_vs_limitations,
         build_chapter_21_current_project_status,
@@ -529,7 +532,7 @@ def generate_master_engineering_report():
     print("[19/26] Building Chapter 17: Results Tables...")
     build_chapter_17_results_tables(doc)
 
-    print("[20/26] Building Chapter 18: Automated Validation (56/56 passing)...")
+    print("[20/26] Building Chapter 18: Automated Validation (64/64 Python, 99 Total)...")
     build_chapter_18_automated_validation(doc)
 
     print("[21/26] Building Chapter 19: Python-MATLAB Parity...")

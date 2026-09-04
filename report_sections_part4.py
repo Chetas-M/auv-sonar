@@ -15,6 +15,7 @@ from generate_report_docx import (
     add_ascii_diagram, COLOR_PRIMARY_HEX, COLOR_SECONDARY_HEX,
     COLOR_ACCENT_HEX, COLOR_TEXT_HEX, COLOR_MUTED_HEX
 )
+from src.canonical_data import get_canonical_results
 
 
 def build_chapter_20_verified_claims_vs_limitations(doc):
@@ -110,7 +111,7 @@ def build_chapter_21_current_project_status(doc):
     add_bullet(doc, "Priority 1 Evaluation Engine: ", "Physics-grounded profile performance evaluation implemented across Python and MATLAB with 5-point in-band sampling.")
     add_bullet(doc, "Two-Tier Adaptation Controller: ", "Decoupled propagation viability filtering and mission utility selection hierarchy with Schmitt hysteresis and debounce.")
     add_bullet(doc, "Dual Confidence Metric Architecture: ", "Viability Confidence (Cv) and Mission Selection Confidence (Cs) fully operational and documented.")
-    add_bullet(doc, "Automated Verification Suite: ", "56 / 56 automated unit tests passing in Python; 23-point DSP suite and 12-point Priority 1 suite passing in MATLAB.")
+    add_bullet(doc, "Automated Verification Suite: ", "64 / 64 automated unit and regression tests passing in Python; 23-point DSP suite and 12-point Priority 1 suite passing in MATLAB (99 total validation checks across all suites).")
     add_bullet(doc, "20 Engineering Visualizations: ", "All 7 Priority 1 experiment figures and 13 baseline validation plots generated in high resolution in outputs_matlab/plots/.")
     add_bullet(doc, "Firmware-Ready Prototype C Headers: ", "Generated DMA-aligned C lookup table headers (chirp_low_frequency.h, chirp_balanced.h, chirp_high_frequency.h, sonar_profiles.h) ready for STM32 firmware bring-up.")
 
@@ -168,7 +169,8 @@ def build_chapter_23_team_responsibility_guide(doc):
         ("Analog & Electronics Engineer", "Mixed-signal PCB design, reconstruction filtering, power amplifier, and DC-DC power delivery.", "Hardware schematics, outputs/headers/ (electrical specs)", "DAC analog output specs (3.3 V, 4 MSPS), battery voltage (12 V)", "Filter schematics, PA design, PCB layout, bench test measurements", "Firmware Engineer, Transducer Lead"),
         ("Acoustic Simulation Engineer", "Propagation modeling, seawater absorption, two-way sonar equations, and matched filtering.", "src/profile_evaluator.py, src/waveform.py, matlab/evaluate_profile_performance.m", "Oceanographic parameters (T, S, D, turb), transducer bandwidths", "Acoustic evaluation algorithms, synthetic echo models, range resolution limits", "Systems Lead"),
         ("Dashboard & Visualization Engineer", "Mission telemetry, real-time plotting, digital twin GUI, and automated visual reporting.", "src/experiments.py, matlab/run_simulation.m, outputs_matlab/plots/*", "Simulation timeline logs, state-machine telemetry", "Matplotlib/MATLAB plotting scripts, dashboard telemetry displays", "Simulation Engineer"),
-        ("Testing & Documentation Engineer", "Automated test suite maintenance, parity testing, technical documentation, and SIH reports.", "tests/*, matlab/run_validation_suite.m, engineering reports", "New module commits, PRs, mathematical equations", "Passing test logs (56/56), Word/PDF engineering documentation", "All team members"),
+        ("Testing & Documentation Engineer", "Automated test suite maintenance, parity testing, technical documentation, and SIH reports.", "tests/*, matlab/run_validation_suite.m, engineering reports", "New module commits, PRs, mathematical equations", "Passing test logs (64/64 Python, 35/35 MATLAB), Word/PDF engineering documentation", "All team members"),
+        ("Systems & Integration Lead", "Single Source of Truth enforcement, trade-off mediation, presentation, and hardware bring-up coordination.", "src/config.py, matlab/config_sonar.m, architecture reviews", "Subsystem conflict points, parameter changes", "Final delivery freeze, presentation decks, hardware roadmap sign-off", "All team members"),
     ]
 
     col_w = [Inches(1.2), Inches(1.3), Inches(1.3), Inches(0.9), Inches(1.0), Inches(0.8)]
@@ -223,7 +225,7 @@ def build_chapter_25_conclusion(doc):
     add_bullet(doc, "Intelligent Two-Tier Selection: ", "Successfully resolved the low-frequency domination paradox by decoupling propagation viability filtering from mission utility optimization, guaranteeing long-range fallback while prioritizing survey resolution and tracking directivity.")
     add_bullet(doc, "Explainable Dual Confidence: ", "Introduced Viability Confidence (Cv) and Mission Selection Confidence (Cs), providing transparent, early-warning link margin telemetry.")
     add_bullet(doc, "Chatter-Free State Machine: ", "Demonstrated that directional Schmitt hysteresis (10% deadband) and debounce persistence (N=2) eliminate state jitter, while atomic ping-boundary latching protects power amplifier stages.")
-    add_bullet(doc, "Exhaustive Automated Validation: ", "Confirmed 56 / 56 automated tests passing in Python with bit-exact parity across 14 synchronized MATLAB scripts.")
+    add_bullet(doc, "Exhaustive Automated Validation: ", "Confirmed 64 / 64 automated tests passing in Python and 35 validation checks in MATLAB (99 total checks across suites) with demonstrated determinism under documented simulation inputs.")
 
     add_h2(doc, "25.2 The Crucial Engineering Transition")
     add_body(
@@ -236,7 +238,7 @@ def build_chapter_25_conclusion(doc):
     add_ascii_diagram(
         doc,
         "                       DIGITAL SIMULATION & ANALYTICAL TWIN\n"
-        "               [ Stage 1 Complete — 56/56 Tests Passing, 20 Figures ]\n"
+        "           [ Stage 1 Complete — 64/64 Python Tests, 35 MATLAB Checks, 20 Figures ]\n"
         "                                           │\n"
         "                                           ▼\n"
         "                            EMBEDDED FIRMWARE BRING-UP\n"
@@ -283,7 +285,7 @@ def build_chapter_25_conclusion(doc):
             "   • Duty-cycle electrical power throttling (0.540 W average at 10% duty cycle, 45.0 mA at 12 V).\n"
             "   • Priority 1 two-tier selection architecture decoupling viability (-65 dB relative margin) from mission utility.\n"
             "   • Explainable dual confidence metrics (Viability Confidence Cv and Selection Confidence Cs).\n"
-            "   • 56 / 56 automated unit tests passing in Python with bit-exact parity across 14 MATLAB scripts.\n\n"
+            "   • 64 / 64 automated unit and regression tests passing in Python and 35 checks in MATLAB (99 total checks across suites).\n\n"
             "2. WHAT IS NOT VALIDATED AND MUST NOT BE CLAIMED:\n"
             "   • Physical underwater acoustic wave propagation, ocean multipath, or real acoustic echoes.\n"
             "   • Receiver hydrophone SNR, matched-filter detection, or closed-loop acoustic feedback.\n"
@@ -327,7 +329,7 @@ def build_appendices(doc):
         ("Simulated SQNR", "69.67 dB", "69.67 dB", "69.70 dB"),
         ("Theoretical Range Res. (ΔR)", "6.25 mm (c = 1500 m/s)", "3.75 mm (c = 1500 m/s)", "5.00 mm (c = 1500 m/s)"),
         ("Relative Directivity Proxy", "0.533x reference", "1.000x baseline reference", "1.417x reference"),
-        ("Baseline Absorption (α_bar)", "18.23 dB/km", "37.58 dB/km", "64.87 dB/km"),
+        ("Baseline Absorption (α_bar)", "64.47 dB/km", "106.32 dB/km", "136.64 dB/km"),
         ("Primary Mission Alignment", "Long-range search / degraded channel", "Default survey mapping & bathymetry", "Narrow-beam obstacle tracking"),
     ]
 
@@ -367,13 +369,14 @@ def build_appendices(doc):
     add_h2(doc, "Appendix C: Automated Test Suite Summary")
     add_body(
         doc,
-        "Summary of the complete 56-test automated validation suite (all passing):"
+        "Summary of the complete 64-test Python automated validation suite (all passing) plus 35 MATLAB checks (99 total):"
     )
 
     test_summary = [
         ("tests/test_matlab_parity.py", "8", "8 Passed (100%)", "Verifies MATLAB file existence, Single Source of Truth parameter alignment, phase integration formula, Q score calculation, Schmitt hysteresis thresholds, 23-test validation suite count, and 13-plot simulation count."),
-        ("tests/test_profile_evaluation.py", "12", "12 Passed (100%)", "Verifies Priority 1: 3-profile evaluation, no NaN/Inf, positive finite attenuation, monotonic TL with range, attenuation ordering (HIGH > BAL > LOW), range resolution ordering (BAL = 3.75 mm best), directivity ordering (HIGH = 1.417x best), 5-point discrete band confinement, long-range fallback to LOW at 200m, Survey mode selection of BAL, Directivity mode selection of HIGH, and bit-exact determinism."),
-        ("tests/test_simulator.py", "36", "36 Passed (100%)", "Verifies LFM chirp synthesis, sample count (8000), duration (2.0 ms), slope (100 MHz/s), start/end frequencies, Hann window tapering, 12-bit DAC codes [0, 4095], midscale 2048, SQNR > 69 dB, Hilbert frequency linearity (error 0.0000%), FFT in-band energy (>99.999%), STFT spectrogram ridge linearity (R² = 0.9901), hysteresis deadbands (10%), debounce persistence (N=2), ping-boundary freeze, power model, and bit-exact C header export round-trip."),
+        ("tests/test_profile_evaluation.py", "12", "12 Passed (100%)", "Verifies Priority 1: 3-profile evaluation, no NaN/Inf, positive finite attenuation, monotonic TL with range, attenuation ordering (HIGH > BAL > LOW), range resolution ordering (BAL = 3.75 mm best), directivity ordering (HIGH = 1.417x best), 5-point discrete band confinement, long-range fallback to LOW at 200m, Survey mode selection of BAL, and Directivity mode selection of HIGH."),
+        ("tests/test_simulator.py", "36", "36 Passed (100%)", "Verifies LFM chirp synthesis, sample count (8000), duration (2.0 ms), slope (100 MHz/s), start/end frequencies, Hann window tapering, 12-bit DAC codes [0, 4095], midscale 2048, SQNR > 69 dB, Hilbert frequency linearity, FFT in-band energy (>99.999%), STFT spectrogram ridge linearity (R² = 0.9901), hysteresis deadbands (10%), debounce persistence (N=2), ping-boundary freeze, power model, and C header export round-trip."),
+        ("tests/test_physics_regression.py", "8", "8 Passed (100%)", "Verifies Hz/kHz unit scaling, dB/km vs dB/m conversions, Ainslie-McColm agreement within 1.0% against independent literature reference, profile mean attenuation constants (LOW=64.47, BAL=106.32, HIGH=136.64 dB/km), attenuation monotonicity, and viability extinction boundaries (HIGH=155.1m, BAL=184.9m, LOW tested 200m / 259.4m theoretical cutoff)."),
     ]
 
     col_w = [Inches(2.2), Inches(0.8), Inches(1.3), Inches(2.2)]
@@ -394,6 +397,9 @@ def build_appendices(doc):
         ("src/power_model.py", "Duty-cycle electrical power dissipation model, average current calculation, and payload battery endurance."),
         ("src/export_c.py", "Prototype C header generator exporting aligned uint16_t lookup tables and SonarProfileDescriptor_t structs."),
         ("src/profile_evaluator.py", "Priority 1 core: Ainslie-McColm absorption, Mackenzie sound speed, 5-point band sampling, two-tier selection, dual confidence."),
+        ("src/physics_reference.py", "Independent Ainslie-McColm reference implementation, canonical physics diagnostics, and cross-validation suite."),
+        ("src/generate_canonical_results.py", "Automated generator exporting outputs/canonical_profile_results.json single source of truth artifact."),
+        ("src/canonical_data.py", "Centralized accessor module loading canonical simulation results across reporting and test pipelines."),
         ("src/experiments.py", "Priority 1 parameter sweeps (range, noise, environmental), tabular reporter, and 7-plot figure generator."),
         ("matlab/config_sonar.m", "Single Source of Truth parameter configuration struct for standalone MATLAB digital twin."),
         ("matlab/profile_definitions.m", "Struct array defining the three canonical transmission profiles in MATLAB."),
@@ -408,6 +414,7 @@ def build_appendices(doc):
         ("tests/test_simulator.py", "Comprehensive 36-test Python unit test suite verifying synthesis, DAC, adaptation, and C export."),
         ("tests/test_profile_evaluation.py", "12-test Python unit test suite verifying Priority 1 profile evaluation and selection logic."),
         ("tests/test_matlab_parity.py", "8-test automated parity test suite confirming Python–MATLAB architectural synchronization."),
+        ("tests/test_physics_regression.py", "8-test automated physics regression test suite verifying unit conversions, reference agreement, and viability boundaries."),
     ]
 
     col_w = [Inches(2.5), Inches(4.0)]

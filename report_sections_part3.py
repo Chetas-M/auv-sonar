@@ -15,6 +15,7 @@ from generate_report_docx import (
     add_figure, COLOR_PRIMARY_HEX, COLOR_SECONDARY_HEX,
     COLOR_ACCENT_HEX, COLOR_TEXT_HEX, COLOR_MUTED_HEX
 )
+from src.canonical_data import get_canonical_results
 
 
 def build_chapter_16_figure_by_figure_analysis(doc):
@@ -49,8 +50,8 @@ def build_chapter_16_figure_by_figure_analysis(doc):
         "Technical Analysis of Figure 1:\n"
         "• What is Plotted: The continuous solid black curve shows baseline seawater attenuation α(f) in dB/km across 80 to 520 kHz under standard conditions (T = 20°C, S = 35 PSU, D = 50 m). Dashed and dotted curves represent optional turbidity sensitivity heuristics (turb = 30 and turb = 80). Coloured scatter points mark the five discrete frequency evaluation points for LOW_FREQUENCY (orange), BALANCED (blue), and HIGH_FREQUENCY (green).\n"
         "• Axes Meaning: The horizontal axis denotes acoustic frequency in kHz; the vertical axis denotes attenuation coefficient α in dB/km.\n"
-        "• Important Trend: Attenuation increases monotonically and super-linearly from ~10 dB/km at 100 kHz to >80 dB/km at 500 kHz, driven by magnesium sulfate relaxation and pure water viscosity.\n"
-        "• Engineering Conclusion: Demonstrates why 5-point discrete sampling is necessary: a single center frequency fails to capture the steep slope across the 200 kHz bandwidth of BALANCED. LOW_FREQUENCY operates in a markedly lower attenuation regime (~18 dB/km vs ~65 dB/km for HIGH_FREQUENCY).\n"
+        "• Important Trend: Attenuation increases monotonically and super-linearly from ~29 dB/km at 80 kHz to ~163 dB/km at 520 kHz under standard ocean baseline conditions, driven by magnesium sulfate relaxation and pure water viscosity.\n"
+        "• Engineering Conclusion: Demonstrates why 5-point discrete sampling is necessary: a single center frequency fails to capture the steep slope across the 200 kHz bandwidth of BALANCED. LOW_FREQUENCY operates in a lower attenuation regime (mean 64.47 dB/km vs 136.64 dB/km for HIGH_FREQUENCY).\n"
         "• Limiting Assumptions: Seawater chemistry assumes standard open-ocean ionic ratios; turbidity curves represent an unvalidated phenomenological heuristic (f² proportionality), not calibrated sediment physics."
     )
 
@@ -69,7 +70,7 @@ def build_chapter_16_figure_by_figure_analysis(doc):
         "• What is Plotted: Relative propagation margin Margin_rel(R) = -TL(R) in dB plotted across target distance R from 5 m to 200 m for LOW_FREQUENCY, BALANCED, and HIGH_FREQUENCY. The red dashed horizontal line denotes the policy viability threshold (-65.0 dB).\n"
         "• Axes Meaning: Horizontal axis represents target range R in meters; vertical axis represents relative propagation margin in dB.\n"
         "• Important Trend: Margin decays rapidly at short range due to geometric spherical spreading (20 log10(R)) and separates widely at long range due to frequency-dependent absorption (α · R).\n"
-        "• Engineering Conclusion: At R = 155 m, HIGH_FREQUENCY drops below -65.0 dB and becomes non-viable. At R = 180 m, BALANCED drops below -65.0 dB. LOW_FREQUENCY remains comfortably viable (-58.91 dB) at 200 m. This proves that high-frequency modes cannot survive long-range propagation, establishing the physical necessity for profile adaptation.\n"
+        "• Engineering Conclusion: At R = 155.1 m, HIGH_FREQUENCY drops below -65.0 dB and becomes non-viable. At R = 184.9 m, BALANCED drops below -65.0 dB. LOW_FREQUENCY remains comfortably viable (-58.91 dB margin, +6.09 dB headroom) at 200 m, with a computed theoretical extinction cutoff at 259.4 m. This proves that high-frequency modes cannot survive long-range propagation, establishing the physical necessity for profile adaptation.\n"
         "• Limiting Assumptions: Assumes spherical spreading in an unbounded medium; does not model shallow-water cylindrical spreading or boundary multipath."
     )
 
@@ -463,13 +464,16 @@ def build_chapter_18_automated_validation(doc):
     add_callout(
         doc,
         tag="Verified Test Results",
-        title="56 / 56 Automated Tests Passing (100% Pass Rate)",
+        title="64 / 64 Automated Tests Passing in Python (99 Total Across Suites)",
         body=(
-            "The complete repository test suite was executed and confirmed passing in 1.62 seconds:\n"
+            "The complete repository automated test suite was executed and confirmed passing:\n"
             "• tests/test_simulator.py: 36 passed\n"
             "• tests/test_profile_evaluation.py: 12 passed\n"
             "• tests/test_matlab_parity.py: 8 passed\n"
-            "TOTAL: Exactly 56 / 56 automated tests passing with zero errors and zero warnings."
+            "• tests/test_physics_regression.py: 8 passed\n"
+            "TOTAL PYTHON SUITE: Exactly 64 / 64 automated tests passing (56 baseline + 8 physics regression tests).\n"
+            "STANDALONE MATLAB SUITES: 23 DSP checks + 12 Priority-1 checks passing (35/35).\n"
+            "TOTAL VALIDATION COVERAGE: 99 validation checks across distinct suites."
         ),
         callout_type="IMPORTANT"
     )
@@ -477,7 +481,7 @@ def build_chapter_18_automated_validation(doc):
     add_h2(doc, "18.1 Major Validation Categories")
     add_body(
         doc,
-        "The 56 automated tests verify sixteen major technical requirements:"
+        "The automated test suites verify seventeen major technical requirements:"
     )
 
     test_cats = [
@@ -497,6 +501,7 @@ def build_chapter_18_automated_validation(doc):
         ("14. Ping-Boundary Freeze", "Verifies that active transmitter profile is strictly frozen during active transmission and latches only at PRI boundaries.", "test_ping_boundary_controller, test_19, test_20"),
         ("15. Priority 1 Profile Evaluation", "Verifies positive finite attenuation, transmission loss monotonicity with range, baseline attenuation ordering, range resolution ordering (BAL = 3.75 mm best), directivity ordering (HIGH = 1.417x best), 5-point discrete band confinement, long-range fallback to LOW, and bit-exact determinism.", "test_01 to test_12 in test_profile_evaluation.py"),
         ("16. C Header Round-Trip Integrity", "Parses exported C headers back into Python and verifies bit-exact uint16 match (0 LSB error across all 8,000 samples).", "test_c_header_roundtrip_integrity, test_21, test_22, test_23"),
+        ("17. Physics Model & Unit Consistency", "Verifies Hz <-> kHz conversions, dB/km vs dB/m scaling, 1.0% agreement against independent literature reference, profile mean attenuation constants, and viability extinction ranges.", "test_01 through test_08 in test_physics_regression.py"),
     ]
 
     col_w = [Inches(1.8), Inches(3.2), Inches(2.2)]

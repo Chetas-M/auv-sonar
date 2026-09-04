@@ -551,6 +551,10 @@ def generate_complete_results_report():
     print(f"  Target File: {OUTPUT_DOCX}")
     print("=" * 80)
 
+    from src.canonical_data import get_canonical_results
+    canonical = get_canonical_results()
+    print(f"[*] Canonical results loaded: {len(canonical['profiles'])} profiles, generated at {canonical['metadata']['generation_timestamp_utc']}")
+
     doc = docx.Document()
 
     # Configure 1.0 inch page margins

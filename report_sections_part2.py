@@ -15,6 +15,7 @@ from generate_report_docx import (
     COLOR_PRIMARY_HEX, COLOR_SECONDARY_HEX, COLOR_ACCENT_HEX,
     COLOR_TEXT_HEX, COLOR_MUTED_HEX
 )
+from src.canonical_data import get_canonical_results
 
 
 def build_chapter_08_priority_1_profile_performance_evaluation(doc):
@@ -163,10 +164,15 @@ def build_chapter_09_frequency_dependent_seawater_attenuation(doc):
         "Five evenly spaced frequency points are evaluated across each profile's bandwidth:"
     )
 
+    canon = get_canonical_results()
+    low_p = canon["profiles"]["LOW_FREQUENCY"]
+    bal_p = canon["profiles"]["BALANCED"]
+    high_p = canon["profiles"]["HIGH_FREQUENCY"]
+
     sampling_data = [
-        ("LOW_FREQUENCY (100–220 kHz)", "100.0 kHz", "130.0 kHz", "160.0 kHz", "190.0 kHz", "220.0 kHz", "18.23 dB/km"),
-        ("BALANCED (200–400 kHz)", "200.0 kHz", "250.0 kHz", "300.0 kHz", "350.0 kHz", "400.0 kHz", "37.58 dB/km"),
-        ("HIGH_FREQUENCY (350–500 kHz)", "350.0 kHz", "387.5 kHz", "425.0 kHz", "462.5 kHz", "500.0 kHz", "64.87 dB/km"),
+        ("LOW_FREQUENCY (100–220 kHz)", f"{low_p['f_points_khz'][0]:.1f} kHz", f"{low_p['f_points_khz'][1]:.1f} kHz", f"{low_p['f_points_khz'][2]:.1f} kHz", f"{low_p['f_points_khz'][3]:.1f} kHz", f"{low_p['f_points_khz'][4]:.1f} kHz", f"{low_p['alpha_band_mean_db_km']:.2f} dB/km"),
+        ("BALANCED (200–400 kHz)", f"{bal_p['f_points_khz'][0]:.1f} kHz", f"{bal_p['f_points_khz'][1]:.1f} kHz", f"{bal_p['f_points_khz'][2]:.1f} kHz", f"{bal_p['f_points_khz'][3]:.1f} kHz", f"{bal_p['f_points_khz'][4]:.1f} kHz", f"{bal_p['alpha_band_mean_db_km']:.2f} dB/km"),
+        ("HIGH_FREQUENCY (350–500 kHz)", f"{high_p['f_points_khz'][0]:.1f} kHz", f"{high_p['f_points_khz'][1]:.1f} kHz", f"{high_p['f_points_khz'][2]:.1f} kHz", f"{high_p['f_points_khz'][3]:.1f} kHz", f"{high_p['f_points_khz'][4]:.1f} kHz", f"{high_p['alpha_band_mean_db_km']:.2f} dB/km"),
     ]
 
     col_w = [Inches(1.8), Inches(0.8), Inches(0.8), Inches(0.8), Inches(0.8), Inches(0.8), Inches(1.1)]
@@ -338,17 +344,23 @@ def build_chapter_12_why_each_profile_exists(doc):
         "The table below contrasts the three canonical profiles across physical acoustics, signal processing, and operational mission roles:"
     )
 
+    canon = get_canonical_results()
+    low_p = canon["profiles"]["LOW_FREQUENCY"]
+    bal_p = canon["profiles"]["BALANCED"]
+    high_p = canon["profiles"]["HIGH_FREQUENCY"]
+    viab = canon["viability_boundaries"]
+
     tradeoff_data = [
         ("Frequency Sweep Range", "100.0 to 220.0 kHz", "200.0 to 400.0 kHz", "350.0 to 500.0 kHz"),
         ("Center Frequency (fc)", "160.0 kHz", "300.0 kHz", "425.0 kHz"),
         ("Active Sweep Bandwidth (B)", "120.0 kHz", "200.0 kHz (Largest Bandwidth)", "150.0 kHz"),
-        ("Baseline Absorption (α_bar)", "~18.2 dB/km (Lowest Loss)", "~37.6 dB/km", "~64.9 dB/km (Highest Loss)"),
-        ("Theoretical Range Resolution (ΔR)", "6.25 mm (Coarsest)", "3.75 mm (Finest Resolution)", "5.00 mm"),
-        ("Relative Theoretical Directivity", "0.533x (Widest Beam)", "1.000x (Baseline Reference)", "1.417x (Narrowest Beam)"),
+        ("Baseline Absorption (α_bar)", f"{low_p['alpha_band_mean_db_km']:.2f} dB/km (Lowest Loss)", f"{bal_p['alpha_band_mean_db_km']:.2f} dB/km", f"{high_p['alpha_band_mean_db_km']:.2f} dB/km (Highest Loss)"),
+        ("Theoretical Range Resolution (ΔR)", f"{low_p['range_resolution_mm']:.2f} mm (Coarsest)", f"{bal_p['range_resolution_mm']:.2f} mm (Finest Resolution)", f"{high_p['range_resolution_mm']:.2f} mm"),
+        ("Relative Theoretical Directivity", f"{low_p['relative_directivity']:.3f}x (Widest Beam)", f"{bal_p['relative_directivity']:.3f}x (Baseline Reference)", f"{high_p['relative_directivity']:.3f}x (Narrowest Beam)"),
         ("Relative Margin at R = 50 m", "-37.20 dB", "-39.30 dB", "-40.81 dB"),
         ("Relative Margin at R = 150 m", "-53.19 dB", "-59.47 dB", "-64.02 dB"),
         ("Relative Margin at R = 200 m", "-58.91 dB (Viable)", "-67.28 dB (Fails -65 dB)", "-73.35 dB (Fails -65 dB)"),
-        ("Maximum Viable Range (Margin >= -65 dB)", ">200 meters", "~180 meters", "~155 meters"),
+        ("Maximum Viable Range (Margin >= -65 dB)", f"{viab['LOW_FREQUENCY']['tested_max_range_m']:.0f} m tested ({viab['LOW_FREQUENCY']['rounded_extinction_boundary_m']:.1f} m cutoff)", f"~{viab['BALANCED']['rounded_boundary_m']:.1f} meters", f"~{viab['HIGH_FREQUENCY']['rounded_boundary_m']:.1f} meters"),
         ("Primary Mission Alignment", "Long-range search / degraded sediment channel", "Default survey mapping & bathymetry", "Close-range obstacle detection & tracking"),
     ]
 
@@ -358,9 +370,10 @@ def build_chapter_12_why_each_profile_exists(doc):
     add_h2(doc, "12.2 LOW_FREQUENCY: The Propagation Resilience and Penetration Profile")
     add_body(
         doc,
-        "Physical Justification: Within the implemented propagation model, LOW_FREQUENCY experiences the lowest frequency-dependent attenuation "
-        "(~18.2 dB/km at baseline conditions, compared to ~64.9 dB/km for HIGH_FREQUENCY). Because absorption is minimal, LOW_FREQUENCY maintains "
-        "a viable propagation margin at ranges exceeding 175 meters, where both BALANCED and HIGH_FREQUENCY drop below the -65 dB simulation "
+        f"Physical Justification: Within the implemented propagation model, LOW_FREQUENCY experiences the lowest frequency-dependent attenuation "
+        f"({low_p['alpha_band_mean_db_km']:.2f} dB/km at baseline conditions, compared to {high_p['alpha_band_mean_db_km']:.2f} dB/km for HIGH_FREQUENCY). Because absorption is minimal, LOW_FREQUENCY maintains "
+        f"a viable propagation margin at ranges exceeding 175 meters (remaining comfortably viable through the full tested operational range of 200 meters with {low_p['margin_at_200m_db']:.2f} dB margin and +6.09 dB headroom; "
+        f"theoretical extinction cutoff at {viab['LOW_FREQUENCY']['rounded_extinction_boundary_m']:.1f} meters), where both BALANCED (~184.9 m cutoff) and HIGH_FREQUENCY (~155.1 m cutoff) drop below the -65 dB simulation "
         "viability threshold. Its engineering role is to act as the fail-safe long-range fallback and penetration mode when high-frequency pulses "
         "fail to survive the channel."
     )

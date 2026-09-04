@@ -17,6 +17,7 @@ from generate_report_docx import (
     COLOR_ACCENT_HEX, COLOR_TEXT_HEX, COLOR_MUTED_HEX,
     set_cell_background, set_cell_margins, set_table_borders
 )
+from src.canonical_data import get_canonical_results
 
 
 def build_cover_page(doc):
@@ -81,7 +82,7 @@ def build_cover_page(doc):
         ("Engineering Maturity", "Stage 1 Complete — Pre-Silicon Digital Twin & Analytical Validation"),
         ("Target Embedded Hardware", "STMicroelectronics STM32G474 (170 MHz ARM Cortex-M4F)"),
         ("Document Release Version", "Version 1.1 — Comprehensive Engineering Baseline"),
-        ("Automated Validation Status", "56 / 56 Unit & Parity Tests Passing (100% Deterministic)"),
+        ("Automated Validation Status", "64 / 64 Unit & Regression Tests Passing (99 Total Across Suites)"),
         ("Engineering Focus Area", "Adaptive Waveform Profiling, Seawater Absorption & DMA Mapping"),
     ]
 
@@ -158,9 +159,9 @@ def build_table_of_contents(doc):
         ("14. Dual Confidence Metrics", "Viability confidence Cv and mission selection confidence Cs formulations"),
         ("15. Parameter Sweep Experiments", "Experimental methodologies and results: Range, Noise, and Environmental sweeps"),
         ("16. Figure-by-Figure Analysis", "Comprehensive visual and technical analysis of all 20 engineering figures"),
-        ("17. Results Tables", "Complete measured simulation data tables for range, noise, memory, and power"),
-        ("18. Automated Validation", "56/56 passing automated tests, testing methodology, and verified properties"),
-        ("19. Python–MATLAB Parity", "Cross-platform mathematical alignment, dual codebase strategy, and parity verification"),
+        ("17. Hardware Bring-Up Protocol", "Step-by-step engineering roadmap for bench and oscilloscope validation"),
+        ("18. Automated Validation", "64/64 passing Python tests, 35 MATLAB checks (99 total), methodology, and verified properties"),
+        ("19. Mathematical Derivations", "Analytical proofs of energy conservation, Hilbert phase, and SQNR bounds"),
         ("20. Verified Claims vs Limitations", "Structured tables: Verified Results, Theoretical Limits, and Future Claims"),
         ("21. Current Project Status", "Engineering maturity assessment: what is completed vs what remains for hardware"),
         ("22. Recommended Next Development Roadmap", "Prioritized development roadmap from Priority 2 (Hardware) to Priority 7 (Tank)"),
@@ -262,7 +263,7 @@ def build_chapter_01_executive_summary(doc):
     add_bullet(doc, "Decoupled Two-Tier Selection Hierarchy: ", "Separates physical propagation viability filtering from mission utility optimization, preventing low-frequency chirps from artificially dominating all ranges.")
     add_bullet(doc, "Dual Explainable Confidence Metrics: ", "Computes both Viability Confidence (safety margin above the -65 dB relative policy threshold) and Mission Selection Confidence (utility separation between winner and runner-up).")
     add_bullet(doc, "Deterministic Fallback Architecture: ", "Ensures that if higher-frequency survey or directivity modes fail propagation viability, the controller deterministically falls back to the low-attenuation profile.")
-    add_bullet(doc, "Comprehensive Verification: ", "Validated across 56 automated tests in Python and 35 tests in MATLAB with bit-exact parity across both engineering environments.")
+    add_bullet(doc, "Comprehensive Verification: ", "Validated across 64 automated unit and regression tests in Python and 35 validation checks in MATLAB (99 total validation checks across suites) with demonstrated determinism under documented simulation inputs.")
 
     add_h2(doc, "1.2 End-to-End Architectural Dataflow")
     add_body(
@@ -675,14 +676,19 @@ def build_chapter_05_lfm_waveform_generation(doc):
         "All three profiles operate at sample rate F_s = 4.0 MSPS with pulse duration T_p = 2.0 ms (N_p = 8,000 samples):"
     )
 
+    canon = get_canonical_results()
+    low_p = canon["profiles"]["LOW_FREQUENCY"]
+    bal_p = canon["profiles"]["BALANCED"]
+    high_p = canon["profiles"]["HIGH_FREQUENCY"]
+
     prof_data = [
-        ("LOW_FREQUENCY (Profile 1)", "100.0 kHz", "220.0 kHz", "160.0 kHz", "120.0 kHz", "60.0 MHz/s", "1.00 (Max)", "~18.2 dB/km", "6.25 mm", "0.533x", "Degraded channel penetration & long-range fallback"),
-        ("BALANCED (Profile 2)", "200.0 kHz", "400.0 kHz", "300.0 kHz", "200.0 kHz", "100.0 MHz/s", "0.70 (Nom)", "~37.6 dB/km", "3.75 mm", "1.000x", "Primary survey default: finest range resolution"),
-        ("HIGH_FREQUENCY (Profile 3)", "350.0 kHz", "500.0 kHz", "425.0 kHz", "150.0 kHz", "75.0 MHz/s", "0.40 (Low)", "~64.9 dB/km", "5.00 mm", "1.417x", "Narrow-beam directivity mode for obstacle tracking"),
+        ("LOW_FREQUENCY (Profile 1)", f"{low_p['f_start_khz']:.1f} kHz", f"{low_p['f_end_khz']:.1f} kHz", f"{low_p['f_center_khz']:.1f} kHz", f"{low_p['bandwidth_khz']:.1f} kHz", f"{low_p['chirp_slope_mhz_s']:.1f} MHz/s", f"{low_p['amplitude_factor']:.2f} (Max)", f"{low_p['alpha_band_mean_db_km']:.2f} dB/km", f"{low_p['range_resolution_mm']:.2f} mm", f"{low_p['relative_directivity']:.3f}x", "Degraded channel penetration & long-range fallback"),
+        ("BALANCED (Profile 2)", f"{bal_p['f_start_khz']:.1f} kHz", f"{bal_p['f_end_khz']:.1f} kHz", f"{bal_p['f_center_khz']:.1f} kHz", f"{bal_p['bandwidth_khz']:.1f} kHz", f"{bal_p['chirp_slope_mhz_s']:.1f} MHz/s", f"{bal_p['amplitude_factor']:.2f} (Nom)", f"{bal_p['alpha_band_mean_db_km']:.2f} dB/km", f"{bal_p['range_resolution_mm']:.2f} mm", f"{bal_p['relative_directivity']:.3f}x", "Primary survey default: finest range resolution"),
+        ("HIGH_FREQUENCY (Profile 3)", f"{high_p['f_start_khz']:.1f} kHz", f"{high_p['f_end_khz']:.1f} kHz", f"{high_p['f_center_khz']:.1f} kHz", f"{high_p['bandwidth_khz']:.1f} kHz", f"{high_p['chirp_slope_mhz_s']:.1f} MHz/s", f"{high_p['amplitude_factor']:.2f} (Low)", f"{high_p['alpha_band_mean_db_km']:.2f} dB/km", f"{high_p['range_resolution_mm']:.2f} mm", f"{high_p['relative_directivity']:.3f}x", "Narrow-beam directivity mode for obstacle tracking"),
     ]
 
     col_w = [Inches(1.5), Inches(0.5), Inches(0.5), Inches(0.5), Inches(0.5), Inches(0.6), Inches(0.5), Inches(0.6), Inches(0.5), Inches(0.4), Inches(1.4)]
-    headers = ["Profile Name", "f_start", "f_end", "f_center", "Bandwidth", "Chirp Slope", "Amp A", "Mean α", "ΔR (c=1500)", "Dir_rel", "Engineering Mission Purpose"]
+    headers = ["Profile Name", "f_start", "f_end", "f_center", "Bandwidth", "Chirp Slope", "Amp A", "Mean α", "ΔR", "Dir_rel", "Engineering Mission Purpose"]
     add_styled_table(doc, headers, prof_data, col_widths=None)
 
 
