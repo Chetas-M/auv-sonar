@@ -18,7 +18,7 @@ function run_simulation()
     fprintf(cfg.disclaimer);
 
     % Output directories
-    output_dir = fullfile(pwd, 'outputs_matlab');
+    output_dir = fullfile(sonar_project_root(), 'outputs_matlab');
     plots_dir = fullfile(output_dir, 'plots');
     headers_dir = fullfile(output_dir, 'headers');
     if ~exist(plots_dir, 'dir'), mkdir(plots_dir); end
@@ -158,7 +158,7 @@ function run_simulation()
 
     % Figure 5: Spectrogram
     fig5 = figure('Visible', 'off', 'Position', [100, 100, 900, 450]);
-    [S, F, T] = spectrogram(wf_bal.signal, hann(256), 192, 512, cfg.Fs);
+    [S, F, T] = local_spectrogram(wf_bal.signal, 256, 192, 512, cfg.Fs);
     surf(T * 1000, F / 1e3, 20*log10(abs(S) + 1e-12), 'EdgeColor', 'none');
     axis xy; axis tight; view(0, 90); colormap('hot'); colorbar;
     ylim([0, 600]); caxis([-50, 0]);
@@ -247,7 +247,7 @@ function run_simulation()
     yline(cfg.thresh_bal_to_low, 'r--', 'Demote to Low (0.30)');
     ylim([0, 1]); grid on; xlabel('Mission Time (seconds)'); ylabel('Quality Score Q');
     title('Plot 9: Predicted Channel Quality Score Timeline with Directional Thresholds');
-    legend('Score Q', 'Location', 'lower right');
+    legend('Score Q', 'Location', 'southeast');
     saveas(fig9, fullfile(plots_dir, '09_channel_quality_timeline.png'));
     close(fig9);
     fprintf('  [+] Plot 9 saved: 09_channel_quality_timeline.png\n');
@@ -285,7 +285,7 @@ function run_simulation()
     stairs(t_axis(zoom_m), active_hist(zoom_m), 'k-', 'LineWidth', 2.0);
     yticks([1, 2, 3]); yticklabels({'LOW\_FREQ', 'BALANCED', 'HIGH\_FREQ'});
     ylabel('Profile State'); xlabel('Time (seconds)'); grid on;
-    legend('Candidate Profile', 'Latched Active Profile', 'Location', 'lower right');
+    legend('Candidate Profile', 'Latched Active Profile', 'Location', 'southeast');
     saveas(fig12, fullfile(plots_dir, '12_hysteresis_debounce_demo.png'));
     close(fig12);
     fprintf('  [+] Plot 12 saved: 12_hysteresis_debounce_demo.png\n');
@@ -328,4 +328,27 @@ function run_simulation()
     fprintf('  • Generated Plots:      %s (13 figures)\n', plots_dir);
     fprintf('  • Exported Headers:     %s (4 C headers)\n', headers_dir);
     fprintf('==============================================================================\n');
+end
+
+function [S, F, T] = local_spectrogram(x, window_length, overlap, nfft, Fs)
+%LOCAL_SPECTROGRAM Base-MATLAB STFT used to avoid a Signal Processing Toolbox dependency.
+    hop = window_length - overlap;
+    if (hop <= 0) || (window_length > length(x))
+        error('Invalid STFT window length or overlap.');
+    end
+
+    frame_count = floor((length(x) - window_length) / hop) + 1;
+    window = 0.5 - 0.5 * cos(2 * pi * (0:(window_length - 1))' / (window_length - 1));
+    S = zeros((nfft / 2) + 1, frame_count);
+    T = zeros(1, frame_count);
+
+    for frame_idx = 1:frame_count
+        first_sample = 1 + (frame_idx - 1) * hop;
+        segment = x(first_sample:(first_sample + window_length - 1)) .* window;
+        spectrum = fft(segment, nfft);
+        S(:, frame_idx) = spectrum(1:((nfft / 2) + 1));
+        T(frame_idx) = (first_sample - 1 + (window_length / 2)) / Fs;
+    end
+
+    F = (0:(nfft / 2))' * (Fs / nfft);
 end

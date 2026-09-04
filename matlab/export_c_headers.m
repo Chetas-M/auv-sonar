@@ -7,7 +7,7 @@
 
 function export_c_headers(output_dir)
     if nargin < 1
-        output_dir = fullfile(pwd, 'outputs_matlab', 'headers');
+        output_dir = fullfile(sonar_project_root(), 'outputs_matlab', 'headers');
     end
     if ~exist(output_dir, 'dir')
         mkdir(output_dir);

@@ -178,7 +178,7 @@ function results = run_validation_suite()
     % ==========================================================================
     % GROUP 6: C HEADER EXPORT TESTS (21 - 23)
     % ==========================================================================
-    test_export_dir = fullfile(pwd, 'outputs_matlab', 'headers_val_test');
+    test_export_dir = fullfile(sonar_project_root(), 'outputs_matlab', 'headers_val_test');
     if ~exist(test_export_dir, 'dir')
         mkdir(test_export_dir);
     end
@@ -198,8 +198,13 @@ function results = run_validation_suite()
     fid = fopen(h_bal, 'r');
     h_content = fread(fid, '*char')';
     fclose(fid);
-    t22_pass = contains(h_content, '#define CHIRP_BALANCED_LUT_SAMPLE_COUNT    (8000U)') && ...
-               contains(h_content, '#define CHIRP_BALANCED_LUT_SIZE_BYTES      (16000U)');
+    % Accept any valid whitespace alignment between macro name and value.
+    % Header formatting is intentionally cosmetic and must not make a correct
+    % 8,000-sample / 16,000-byte export fail validation.
+    t22_pass = ~isempty(regexp(h_content, ...
+        '#define\s+CHIRP_BALANCED_LUT_SAMPLE_COUNT\s+\(8000U\)', 'once')) && ...
+               ~isempty(regexp(h_content, ...
+        '#define\s+CHIRP_BALANCED_LUT_SIZE_BYTES\s+\(16000U\)', 'once'));
     report_test(22, 'Export: Sample Count & Size Metadata Match Table Size (8000 samples, 16 KB)', t22_pass);
     tests_passed = tests_passed + t22_pass;
 

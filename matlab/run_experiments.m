@@ -17,7 +17,7 @@ function results = run_experiments()
     fprintf('==============================================================================\n');
 
     cfg = config_sonar();
-    output_dir = fullfile(pwd, 'outputs_matlab', 'plots');
+    output_dir = fullfile(sonar_project_root(), 'outputs_matlab', 'plots');
     if ~exist(output_dir, 'dir'), mkdir(output_dir); end
 
     % --------------------------------------------------------------------------

@@ -179,10 +179,11 @@ To maintain strict engineering rigor, every parameter in this digital twin is ca
 
 ### Commands
 ```matlab
-% 1. Add directory to path
-addpath(pwd);
+% 1. Run this once from the MATLAB Current Folder browser.
+setup_sonar_project;
 
-% 2. Run master simulation (generates 13 waveform/controller validation figures and C headers)
+% 2. Run a quick test first, then the master simulation.
+run_profile_evaluation_tests;
 run_simulation;
 
 % 3. Run Priority 1 parameter sweep experiments (generates 7 experiment figures)
