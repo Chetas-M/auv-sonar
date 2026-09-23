@@ -189,3 +189,21 @@ Every parameter in this digital twin is categorized into one of five distinct cl
 18. `exp05_profile_winner_vs_range.png`: Profile selection vs range under Survey (resolution priority) and Directivity (narrow-beam priority) mission objectives.
 19. `exp06_performance_margin_vs_range.png`: Candidate margin above viability and confidence metrics vs range.
 20. `exp07_environmental_sensitivity_summary.png`: Multi-panel sensitivity analysis of $T, S, D$ on sound speed, absorption, and range resolution.
+
+---
+
+## 6. MATLAB Simulink Modeling Suite (`matlab/simulink/`)
+
+A companion Simulink modeling suite directly references and runs the MATLAB digital twin functions in dynamic simulation environments:
+
+| Simulink Model | Purpose & Rate | Referenced MATLAB Files |
+|---|---|---|
+| **`auv_sonar_transmitter_payload.slx`** | **ALL-IN-ONE Master Unified Payload Model** ($T_s = 20\text{ ms}$, $3.0\text{ s}$) | Complete end-to-end payload combining scenario, channel evaluation, FSM hysteresis, power model, and report scopes |
+| **`auv_sonar_mission_controller.slx`** | Dynamic ping-rate mission controller ($T_s = 20\text{ ms}$, $3.0\text{ s}$ duration) | [`channel_model.m`](file:///c:/AUV/auv-sonar/matlab/channel_model.m), [`evaluate_profile_performance.m`](file:///c:/AUV/auv-sonar/matlab/evaluate_profile_performance.m), [`adaptive_controller.m`](file:///c:/AUV/auv-sonar/matlab/adaptive_controller.m), [`power_model.m`](file:///c:/AUV/auv-sonar/matlab/power_model.m) |
+| **`auv_sonar_waveform_pipeline.slx`** | High-speed $4.0\text{ MSPS}$ DAC & DSP pipeline ($T_s = 250\text{ ns}$, $T_p = 2.0\text{ ms}$) | [`generate_lfm_chirp.m`](file:///c:/AUV/auv-sonar/matlab/generate_lfm_chirp.m), [`dac_quantize.m`](file:///c:/AUV/auv-sonar/matlab/dac_quantize.m), [`profile_definitions.m`](file:///c:/AUV/auv-sonar/matlab/profile_definitions.m) |
+| **`auv_sonar_payload_top.slx`** | Integrated top-level AUV sonar transmitter payload architecture | Master system integrating mission controller with waveform & DMA mapping subsystem |
+
+For complete documentation, block diagrams, 13 engineering report figures, and automated 18-point parity validation suite, see:
+👉 **[`matlab/simulink/README.md`](file:///c:/AUV/auv-sonar/matlab/simulink/README.md)**
+
+

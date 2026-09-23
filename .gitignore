@@ -49,9 +49,11 @@ ehthumbs.db
 .coverage
 htmlcov/
 
-# MATLAB temporary files
+# MATLAB & Simulink temporary files
 *.asv
 *.m~
+*.slxc
+slprj/
 
 # Office temporary files
 ~$*
