@@ -1,0 +1,220 @@
+flash: Memory.MappedMemory @ sysbus 0x08000000
+    size: 0x80000
+
+flash_ctrl: MTD.STM32F4_FlashController @ sysbus 0x40022000
+    flash: flash
+
+ram: Memory.MappedMemory @ sysbus 0x20000000
+    size: 0x18000
+
+nvic: IRQControllers.NVIC @ sysbus 0xE000E000
+    priorityMask: 0xF0
+    systickFrequency: 160000000
+    IRQ -> cpu@0
+
+cpu: CPU.CortexM @ sysbus
+    cpuType: "cortex-m4"
+    nvic: nvic
+
+gpioPortA: GPIOPort.STM32_GPIOPort @ sysbus <0x48000000, +0x400>
+    numberOfAFs: 16
+    [0-15] -> exti@[0-15]
+
+gpioPortB: GPIOPort.STM32_GPIOPort @ sysbus <0x48000400, +0x400>
+    numberOfAFs: 16
+    [0-15] -> exti@[0-15]
+
+gpioPortC: GPIOPort.STM32_GPIOPort @ sysbus <0x48000800, +0x400>
+    numberOfAFs: 16
+    [0-15] -> exti@[0-15]
+
+exti: IRQControllers.STM32F4_EXTI @ sysbus 0x40010400
+    numberOfOutputLines: 16
+    [0-4] -> nvic@[6-10]
+    [5-9] -> nvicInput23@[0-4]
+    [10-15] -> nvicInput40@[0-5]
+
+nvicInput23: Miscellaneous.CombinedInput @ none
+    numberOfInputs: 5
+    -> nvic@23
+
+nvicInput40: Miscellaneous.CombinedInput @ none
+    numberOfInputs: 6
+    -> nvic@40
+
+rcc: Python.PythonPeripheral @ sysbus 0x40021000
+    size: 0x400
+    initable: true
+    script: '''
+if request.IsInit:
+    data = {
+        'cr': 0x00000300,
+        'pllcfgr': 0,
+        'cfgr': 0
+    }
+
+if request.IsWrite:
+    if request.Offset == 0x00:
+        data['cr'] = request.Value
+
+        if data['cr'] & (1 << 16):
+            data['cr'] |= (1 << 17)
+
+        if data['cr'] & (1 << 8):
+            data['cr'] |= (1 << 10)
+
+        if data['cr'] & (1 << 24):
+            data['cr'] |= (1 << 25)
+
+    elif request.Offset == 0x0C:
+        data['pllcfgr'] = request.Value
+
+    elif request.Offset == 0x08:
+        data['cfgr'] = request.Value
+
+        if (data['cfgr'] & 0x3) == 0x3:
+            data['cfgr'] = (data['cfgr'] & ~(0x3 << 2)) | (0x3 << 2)
+
+elif request.IsRead:
+    if request.Offset == 0x00:
+        request.Value = data['cr']
+
+    elif request.Offset == 0x04:
+        request.Value = 0
+
+    elif request.Offset == 0x08:
+        request.Value = data['cfgr']
+
+    elif request.Offset == 0x0C:
+        request.Value = data['pllcfgr']
+
+    elif request.Offset == 0x58:
+        request.Value = 0
+
+    else:
+        request.Value = 0
+'''
+
+pwr: Python.PythonPeripheral @ sysbus 0x40007000
+    size: 0x400
+    initable: true
+    script: '''
+if request.IsInit:
+    data = {}
+
+if request.IsWrite:
+    if request.Offset == 0x60:
+        data['cr5'] = request.Value
+
+elif request.IsRead:
+    if request.Offset == 0x60:
+        request.Value = data.get('cr5', 0)
+    else:
+        request.Value = 0
+'''
+dma1: Python.PythonPeripheral @ sysbus 0x40020000
+    size: 0x400
+    initable: true
+    script: '''
+if request.IsInit:
+    data = {
+        'isr': 0,
+        'ifcr': 0,
+        'ch1_ccr': 0,
+        'ch1_cndtr': 0,
+        'ch1_cpar': 0,
+        'ch1_cmar': 0
+    }
+
+if request.IsWrite:
+    if request.Offset == 0x00:
+        data['isr'] = request.Value
+    elif request.Offset == 0x04:
+        data['ifcr'] = request.Value
+        if request.Value & (1 << 1):
+            data['isr'] &= ~(1 << 1)
+    elif request.Offset == 0x08:
+        data['ch1_ccr'] = request.Value
+    elif request.Offset == 0x0C:
+        data['ch1_cndtr'] = request.Value
+    elif request.Offset == 0x10:
+        data['ch1_cpar'] = request.Value
+    elif request.Offset == 0x14:
+        data['ch1_cmar'] = request.Value
+
+elif request.IsRead:
+    if request.Offset == 0x00:
+        request.Value = data['isr']
+    elif request.Offset == 0x04:
+        request.Value = 0
+    elif request.Offset == 0x08:
+        request.Value = data['ch1_ccr']
+    elif request.Offset == 0x0C:
+        request.Value = data['ch1_cndtr']
+    elif request.Offset == 0x10:
+        request.Value = data['ch1_cpar']
+    elif request.Offset == 0x14:
+        request.Value = data['ch1_cmar']
+    else:
+        request.Value = 0
+'''
+dmamux1_channel0: Python.PythonPeripheral @ sysbus 0x40020800
+    size: 0x400
+    initable: true
+    script: '''
+if request.IsInit:
+    data = {
+        'ccr': 0
+    }
+
+if request.IsWrite:
+    if request.Offset == 0x00:
+        data['ccr'] = request.Value
+
+elif request.IsRead:
+    if request.Offset == 0x00:
+        request.Value = data['ccr']
+    else:
+        request.Value = 0
+'''
+dac3: Python.PythonPeripheral @ sysbus 0x50001000
+    size: 0x400
+    initable: true
+    script: '''
+if request.IsInit:
+    data = {
+        'cr': 0,
+        'dor2': 0,
+        'sr': 0,
+        'mcr': 0
+    }
+
+if request.IsWrite:
+    if request.Offset == 0x00:
+        data['cr'] = request.Value
+    elif request.Offset == 0x14:
+        data['dor2'] = request.Value
+    elif request.Offset == 0x3C:
+        data['mcr'] = request.Value
+
+elif request.IsRead:
+    if request.Offset == 0x00:
+        request.Value = data['cr']
+    elif request.Offset == 0x14:
+        request.Value = data['dor2']
+    elif request.Offset == 0x34:
+        request.Value = data['sr']
+    elif request.Offset == 0x3C:
+        request.Value = data['mcr']
+    else:
+        request.Value = 0
+'''
+timer2: Timers.STM32_Timer @ sysbus 0x40000000
+    frequency: 160000000
+    initialLimit: 0xFFFFFFFF
+    -> nvic@28
+
+timer6: Timers.STM32_Timer @ sysbus 0x40001000
+    frequency: 160000000
+    initialLimit: 0xFFFF
+    -> nvic@54

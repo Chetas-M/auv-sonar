@@ -1,0 +1,5 @@
+mach create "AUV-G474"
+machine LoadPlatformDescription @renode/stm32g474_minimal.repl
+sysbus LoadELF @D:\AUV\ sonar\firmware\build\auv_sonar_transmitter.elf
+cpu Reset
+start
