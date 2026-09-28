@@ -7,11 +7,11 @@ PROJECT = auv_sonar_transmitter
 
 # Directories
 INC_DIRS = Inc inc ../outputs/headers
-SRC_DIRS = Src src
+SRC_DIR = $(firstword $(wildcard src Src))
 BUILD_DIR = build
 
-# Source files (supports both Src and src casing)
-SRCS = $(wildcard $(addsuffix /*.c, $(SRC_DIRS)))
+# Source files
+SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(notdir $(SRCS)))
 
 # Include flags

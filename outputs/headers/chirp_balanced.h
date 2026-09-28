@@ -51,6 +51,10 @@ extern "C" {
 #define CHIRP_BALANCED_LUT_SAMPLE_COUNT      (8000U)
 #define CHIRP_BALANCED_LUT_SIZE_BYTES        (16000U)
 
+/* Compatibility aliases for CubeMX / HAL callers */
+#define chirp_balanced                       CHIRP_BALANCED_LUT
+#define CHIRP_BALANCED_LENGTH                CHIRP_BALANCED_LUT_SAMPLE_COUNT
+
 DMA_ALIGN const uint16_t CHIRP_BALANCED_LUT[8000] = {
     0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x0800,
     0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x0800, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF, 0x07FF,
